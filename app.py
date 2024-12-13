@@ -25,7 +25,10 @@ CONVERSATION_SID = conversation.sid # Replace with your Twilio Conversation SID
 
 # Route to handle incoming WhatsApp messages
 user_sessions= {}
-
+@app.route("/", method="POST"])
+def home():
+    return "Welcome to Factcheck"
+    
 @app.route("/whatsapp", methods=["POST", "GET"])
 def whatsapp_reply():
     incoming_message = request.form.get("Body").strip()
