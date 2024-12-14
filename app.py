@@ -1,16 +1,24 @@
+from flask import Flask, request, redirect
+from flask_ngrok import run_with_ngrok 
 from flask import Flask, request, jsonify
-from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client
 import requests
+import time
+from dotenv import load_dotenv
 import os
-from datetime import datetime, timedelta
 from pyshorteners import Shortener
 
-from dotenv import load_dotenv
+
+s = Shortener()
+
 load_dotenv()
 
+
+
 app = Flask(__name__)
-s = Shortener()
+
+
 # External API endpoint
 EXTERNAL_API_URL = "https://www.myaifactchecker.org/api/factcheck/"
 
@@ -20,94 +28,67 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")        # Replace with your 
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")            # Replace with your Auth Token
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-conversation = client.conversations.v1.conversations.create()
-CONVERSATION_SID = conversation.sid # Replace with your Twilio Conversation SID
+
+
+@app.route("/") 
+def hello(): 
+    return "Welcome to myaifactchecker.org"
+
+
+@app.route("/message_status", methods=["POST","GET"])
+def message_status():
+    message_sid = request.values.get("MessageSid")
+    message_status = request.values.get("MessageStatus")
+    print(f"Message {message_sid} status: {message_status}")  # Log or store status
+    return "", 204  # Return an empty response with 204 No Content
+
 
 # Route to handle incoming WhatsApp messages
-user_sessions= {}
-@app.route("/", methods=["POST"])
-def home():
-    return "Welcome to Factcheck"
-    
-@app.route("/whatsapp", methods=["POST", "GET"])
+@app.route("/whatsapp", methods=["POST","GET"])
 def whatsapp_reply():
-    incoming_message = request.form.get("Body").strip()
+    # Parse the incoming message from Twilio
+    incoming_message = request.form.get("Body")
     sender_number = request.form.get("From")
-    current_time = datetime.now()
-
-    print(incoming_message)
-    # Check if user is in session
-    if sender_number not in user_sessions or (
-        sender_number in user_sessions and
-        current_time - user_sessions[sender_number]["last_active"] > timedelta(minutes=60)
-    ):
-        # New user or timed-out session
-        user_sessions[sender_number] = {
-            "name": None,
-            "state": "getting_name",
-            "last_active": current_time
-        }
-        response_text = "Hi! 👋 Welcome to Myaifactcheker. Could you please tell us your name?"
+    
+    # Check if the user is responding with a choice
+    keys={"💬":"2", "✅":"1"}
+    if incoming_message == keys["✅"]:
+        response_text = "Great! Please input your claim"
+    elif incoming_message == keys["💬"]:
+        response_text = "Thank you for your feedback! Please share your thoughts."
     else:
-        # Existing session
-        session = user_sessions[sender_number]
-        session["last_active"] = current_time  # Update activity timestamp
-
-        if session["state"] == "getting_name":
-            # Save the user's name
-            user_sessions[sender_number]["name"] = incoming_message
-            user_sessions[sender_number]["state"] = "main_menu"
-            response_text = (
-                f"Nice to meet you, {incoming_message}! 👋\n\n"
-                "👉 What would you like to do?\n"
-                "✅ Verify a Claim (Type 1)\n"
-                "💬 Give Feedback (Type 2)"
-            )
-        elif session["state"] == "main_menu":
-            # Handle user choices
-            if incoming_message == "1" or incoming_message == "✅":
-                response_text = "Great! Please input your claim."
-                user_sessions[sender_number]["state"] = "verifying_claim"
-            elif incoming_message == "2" or incoming_message == "💬":
-                response_text = "Thank you for choosing to provide feedback! Please share your thoughts."
-                user_sessions[sender_number]["state"] = "awaiting_feedback"
-            else:
-                response_text = (
-                    "I didn't understand your response. Please choose:\n"
-                    "✅ Verify a Claim (Type 1)\n"
-                    "💬 Give Feedback (Type 2)"
-                )
-        elif session["state"] == "verifying_claim":
-            # Process claim
-            result = call_external_api(incoming_message)  # Replace with actual API call logic
-            response_text = (
-                f"{result['message']}\n\n"
-                "👉 Would you like to do something else?\n"
-                "✅ Verify another Claim (Type 1)\n"
-                "💬 Give Feedback (Type 2)"
-            )
-            user_sessions[sender_number]["state"] = "main_menu"
-        elif session["state"] == "awaiting_feedback":
-            # Handle feedback
-            response_text = "Thank you for your feedback! We appreciate your input. 🙏"
-            user_sessions[sender_number]["state"] = "main_menu"
-
-    # Send response to the user
+        # Call the external API for other input
+        result = call_external_api(incoming_message)
+        response_text = (
+            f"{result['message']}\n\n"
+            "👉 What would you like to do next?\n"
+            "✅ Verify a Claim (Type 1) \n"
+            "💬 Give us Feedback (Type 2)\n"
+        )
+    
     try:
+        # Send the response message
         message = client.messages.create(
             body=response_text,
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number
         )
-        
-        
+
         print(f"Message SID: {message.sid}")
         response = {"status": "success", "message_sid": message.sid}
+        
     except Exception as e:
         print(f"Error sending message: {e}")
         response = {"status": "error", "message": str(e)}
-
+    
     return jsonify(response)
+        
+        
+        
+    
+    #return str(message)
+
+
 # Function to call external API
 def call_external_api(user_query):
     try:
@@ -146,5 +127,9 @@ def call_external_api(user_query):
     except Exception as e:  # Catch other unexpected errors
         return {'message': f"An error occurred: {e}", 'status': 'error'}
 
+
+#run_with_ngrok(app)
+# Run the Flask app
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+    #app.run()
