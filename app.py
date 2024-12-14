@@ -1,6 +1,4 @@
-from flask import Flask, request, redirect
-from flask_ngrok import run_with_ngrok 
-from flask import Flask, request, jsonify
+from flask import Flask, request, redirect, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
@@ -13,7 +11,6 @@ from pyshorteners import Shortener
 s = Shortener()
 
 load_dotenv()
-
 
 
 app = Flask(__name__)
@@ -128,7 +125,6 @@ def call_external_api(user_query):
         return {'message': f"An error occurred: {e}", 'status': 'error'}
 
 
-#run_with_ngrok(app)
 # Run the Flask app
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
