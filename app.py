@@ -109,11 +109,14 @@ def call_external_api(user_query):
             if len(url1)!=0:
                 url1.extend(url2)
                 url="SOURCES \n" + "\n".join(url1)
-            """  
+             
         
             if 'fresult' in data:
                 return {'message': data['fresult']}  # Return a dictionary
                 #return {'message': data['fresult']+ "\n\n"  + url, 'status': 'success'}  # Return a dictionary
+            """
+            if 'response' in data:
+                return {'message': data['response']}
             else:
               return {'message': "Unexpected API response format.", 'status': 'error'}
         else:
