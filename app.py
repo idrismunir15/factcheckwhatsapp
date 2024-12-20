@@ -89,7 +89,7 @@ def whatsapp_reply():
 # Function to call external API
 def call_external_api(user_query):
     try:
-        payload = {"user_input_news": user_query}
+        payload = {"user_input": user_query}
         headers = {"Content-Type": "application/json"}
         
         # Make the POST request to the external API
