@@ -100,6 +100,7 @@ def call_external_api(user_query):
         if response.status_code in (200, 201): 
             data = response.json() 
 
+            """
             #convert links to shortlinks
             url1=[s.tinyurl.short(url) for url in data['genuine_urls']]
             url2=[s.tinyurl.short(url) for url in data['non_authentic_urls']]
@@ -108,10 +109,11 @@ def call_external_api(user_query):
             if len(url1)!=0:
                 url1.extend(url2)
                 url="SOURCES \n" + "\n".join(url1)
-                
+            """  
         
             if 'fresult' in data:
-              return {'message': data['fresult']+ "\n\n"  + url, 'status': 'success'}  # Return a dictionary
+                return {'message': data['fresult']}  # Return a dictionary
+                #return {'message': data['fresult']+ "\n\n"  + url, 'status': 'success'}  # Return a dictionary
             else:
               return {'message': "Unexpected API response format.", 'status': 'error'}
         else:
