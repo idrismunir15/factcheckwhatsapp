@@ -41,9 +41,11 @@ def whatsapp_reply():
     print(response_text)
     try:
         message = client.messages.create(
-            body=response_text,
+            
             from_=TWILIO_WHATSAPP_NUMBER,
-            to=sender_number
+            to=sender_number,
+            **response_text  # Unpack the response dictionary
+
         )
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
