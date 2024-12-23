@@ -80,9 +80,8 @@ def handle_conversation(whatsapp_id):
         participant = client.conversations.v1.conversations(conversation_sid) \
             .participants \
             .create(
-                identity=whatsapp_id,
-                proxy_address=from_whatsapp_number,
-                address=whatsapp_id
+                messaging_binding_address=whatsapp_id,
+                messaging_binding_proxy_address=from_whatsapp_number,
             )
         
         update_user(whatsapp_id, conversation_sid)
