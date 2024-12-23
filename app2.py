@@ -14,7 +14,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # External API endpoint
-EXTERNAL_API_URL = "https://www.myaifactchecker.org/api/factcheck/"
+EXTERNAL_API_URL = "https://myaifactchecker.org/factcheckAPI/"
 
 # Twilio Credentials
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")  # Replace with your Twilio WhatsApp number
