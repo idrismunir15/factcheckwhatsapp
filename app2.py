@@ -1,6 +1,4 @@
 from flask import Flask, request, redirect, Response
-#from flask_ngrok import run_with_ngrok 
-#from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
@@ -10,13 +8,9 @@ import os
 import json
 import sqlite3
 from datetime import datetime, timedelta
-#from pyshorteners import Shortener
 
-
-#s = Shortener()
 
 load_dotenv()
-
 app = Flask(__name__)
 
 # External API endpoint
