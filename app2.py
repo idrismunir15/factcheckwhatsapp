@@ -84,7 +84,7 @@ def handle_user_input(incoming_message):
         print(full_message)
         return {
             'body': full_message,
-            'template_name': "user_feedback",
+            'template_name': "rate_response",
             'language': "en_US",
             'components': [
                 {
@@ -93,8 +93,8 @@ def handle_user_input(incoming_message):
                     "index": 0,
                     "parameters": [
                         {
-                            "type": "payload",
-                            "payload": "thumbs_up"
+                            "type": "text",
+                            "text": "👍 Like"
                         }
                     ]
                 },
@@ -104,8 +104,8 @@ def handle_user_input(incoming_message):
                     "index": 1,
                     "parameters": [
                         {
-                            "type": "payload",
-                            "payload": "thumbs_down"
+                            "type": "text",
+                            "text": "👎 Dislike"
                         }
                     ]
                 }
