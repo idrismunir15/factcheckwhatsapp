@@ -44,7 +44,7 @@ def whatsapp_reply():
             
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number,
-            **response_text  # Unpack the response dictionary
+            body=response_text['body']  # Unpack the response dictionary
 
         )
         return jsonify({"status": "success", "message_sid": message.sid})
