@@ -48,7 +48,7 @@ def whatsapp_reply():
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
+"""
 def handle_user_input(incoming_message):
     choices = {"💬": "2", "✅": "1"}
     if incoming_message in choices:
@@ -60,10 +60,55 @@ def handle_user_input(incoming_message):
     api_result = call_external_api(incoming_message)
     return (
         f"{api_result['message']}\n\n"
+        """
         "👉 What would you like to do next?\n"
         "✅ Verify a Claim (Type 1) \n"
         "💬 Give us Feedback (Type 2)"
+        """
+        "Rate Us"
     )
+"""
+def handle_user_input(incoming_message):
+    if incoming_message in ["thumbs_up", "thumbs_down"]:
+        feedback = "👍 Thanks!" if incoming_message == "thumbs_up" else "👎 We'll improve."
+        return {
+            'body': feedback,
+        }
+    else:
+        # This is where you'd return your normal response or call your external API
+        # For this example, we'll just send a message and ask for feedback:
+        api_result = call_external_api(incoming_message)
+        full_message = f"{api_result['message']}\n\nPlease rate my response:"
+        
+        return {
+            'body': full_message,
+            'template_name': "user_feedback",
+            'language': "en_US",
+            'components': [
+                {
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": 0,
+                    "parameters": [
+                        {
+                            "type": "payload",
+                            "payload": "thumbs_up"
+                        }
+                    ]
+                },
+                {
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": 1,
+                    "parameters": [
+                        {
+                            "type": "payload",
+                            "payload": "thumbs_down"
+                        }
+                    ]
+                }
+            ]
+        }
 
 def call_external_api(user_query):
     try:
