@@ -50,6 +50,8 @@ def whatsapp_reply():
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
 """
 def handle_user_input(incoming_message):
     choices = {"💬": "2", "✅": "1"}
@@ -84,7 +86,7 @@ def handle_user_input(incoming_message):
         print(full_message)
         return {
             'body': full_message,
-            'template_name': "rate_response",
+            'template_name': "user_feedback",
             'language': "en_US",
             'components': [
                 {
