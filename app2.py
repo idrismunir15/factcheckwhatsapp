@@ -1,141 +1,88 @@
-from flask import Flask, request, redirect, Response
+from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
-import time
-from dotenv import load_dotenv
 import os
-import json
-import sqlite3
-from datetime import datetime, timedelta
-
+from dotenv import load_dotenv
+from pyshorteners import Shortener
 
 load_dotenv()
+
 app = Flask(__name__)
 
 # External API endpoint
 EXTERNAL_API_URL = "https://myaifactchecker.org/factcheckAPI/"
 
 # Twilio Credentials
-TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")  # Replace with your Twilio WhatsApp number
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")        # Replace with your Account SID
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")            # Replace with your Auth Token
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+shortener = Shortener()
 
+@app.route("/")
+def hello():
+    return "Welcome to myaifactchecker.org"
 
-# Your Account SID and Auth Token from twilio.com/console
-account_sid = TWILIO_ACCOUNT_SID
-auth_token = TWILIO_AUTH_TOKEN
-client = Client(account_sid, auth_token)
+@app.route("/message_status", methods=["POST", "GET"])
+def message_status():
+    message_sid = request.values.get("MessageSid")
+    message_status = request.values.get("MessageStatus")
+    print(f"Message {message_sid} status: {message_status}")  # Log or store status
+    return "", 204
 
-# The phone number of the WhatsApp user
-#to_whatsapp_number = 'whatsapp:+2347086584615'
-# Your Twilio WhatsApp number
-from_whatsapp_number = 'whatsapp:+18434381502'
-
-conn = sqlite3.connect('users.db')
-c = conn.cursor()
-
-#Create a database
-# Create table to store user information
-c.execute('''CREATE TABLE IF NOT EXISTS users
-            (whatsapp_id TEXT PRIMARY KEY, conversation_sid TEXT, last_message_time DATETIME)''')
-conn.commit()
-
-
-#Check User: Determine if the user is new or needs a new conversation due to the 24-hour rule.
-def check_user(whatsapp_id):
-    c.execute("SELECT * FROM users WHERE whatsapp_id = ?", (whatsapp_id,))
-    user = c.fetchone()
+@app.route("/whatsapp", methods=["POST", "GET"])
+def whatsapp_reply():
+    incoming_message = request.form.get("Body")
+    sender_number = request.form.get("From")
     
-    if not user:
-        return "new", None
-    else:
-        last_message_time = datetime.strptime(user[2], '%Y-%m-%d %H:%M:%S')
-        if datetime.now() - last_message_time > timedelta(hours=24):
-            return "refresh", user[1]  # User exists but conversation needs refresh
-        return "existing", user[1]  # User exists, conversation continues
-
-
-def update_user(whatsapp_id, conversation_sid):
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute("INSERT OR REPLACE INTO users (whatsapp_id, conversation_sid, last_message_time) VALUES (?, ?, ?)",
-              (whatsapp_id, conversation_sid, now))
-    conn.commit()
+    response_text = handle_user_input(incoming_message)
     
-
-#Create or Retrieve Conversation:
-def handle_conversation(whatsapp_id):
-    user_status, old_conversation_sid = check_user(whatsapp_id)
-    
-    if user_status == "new" or user_status == "refresh":
-        # Create new conversation
-        conversation = client.conversations.v1.conversations.create(
-            friendly_name=f"Chat with {whatsapp_id}"
-        )
-        conversation_sid = conversation.sid
-        
-        # Add WhatsApp participant to the new conversation
-        participant = client.conversations.v1.conversations(conversation_sid) \
-            .participants \
-            .create(
-                messaging_binding_address=whatsapp_id,
-                messaging_binding_proxy_address=from_whatsapp_number,
-            )
-        
-        update_user(whatsapp_id, conversation_sid)
-        print(f"New conversation created with SID: {conversation_sid}")
-        return conversation_sid
-    else:
-        # Use existing conversation
-        print(f"Continuing conversation with SID: {old_conversation_sid}")
-        return old_conversation_sid
-
-
-#handle webhook message
-
-@app.route('/whatsapp', methods=['POST'])
-def whatsapp_webhook():
-    
-    whatsapp_id = request.form.get('From')
-    conversation_sid = handle_conversation(whatsapp_id)
-    
-    # Process the message
-    payload= {"user_input": request.form.get('Body')}
-    headers = {"Content-Type": "application/json"}
-
     try:
-        # Making the API call
-        response = requests.post(EXTERNAL_API_URL, headers=headers, json=payload)
-        response.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
-        
-        # Process the response from the API if needed
-        api_response = response.json()
-        # Example: If the API returns a message to send back
-        if 'response' in api_response:
-            # Send the message back to the Twilio conversation
-            client.conversations.v1.conversations(conversation_sid) \
-                .messages \
-                .create(
-                    #author="YourSystem",
-                    body=api_response['response']
-                )
-        
-        print(f"API response: {api_response}")
-    except requests.RequestException as e:
-        # Log the error or handle it as needed
-        print(f"API call failed: {e}")
-        # Optionally, send an error message to the user
-        client.conversations.v1.conversations(conversation_sid) \
-            .messages \
-            .create(
-                #author="YourSystem",
-                body="Sorry, there was an issue processing your request."
-            )
+        message = client.messages.create(
+            body=response_text,
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=sender_number
+        )
+        return jsonify({"status": "success", "message_sid": message.sid})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-    return Response(status=200)
+def handle_user_input(incoming_message):
+    choices = {"💬": "2", "✅": "1"}
+    if incoming_message in choices:
+        return {
+            "✅": "Great! Please input your claim",
+            "💬": "Thank you for your feedback! Please share your thoughts."
+        }[incoming_message]
+    
+    api_result = call_external_api(incoming_message)
+    return (
+        f"{api_result['message']}\n\n"
+        "👉 What would you like to do next?\n"
+        "✅ Verify a Claim (Type 1) \n"
+        "💬 Give us Feedback (Type 2)"
+    )
+
+def call_external_api(user_query):
+    try:
+        payload = {"user_input": user_query}
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=30)
+        response.raise_for_status()  # Will raise HTTPError for bad status codes
+        
+        data = response.json()
+        if 'response' in data:
+            return {'message': data['response']}
+        else:
+            return {'message': "Unexpected API response format.", 'status': 'error'}
+    
+    except requests.exceptions.Timeout:
+        return {'message': "Request timed out.", 'status': 'error'}
+    except requests.exceptions.RequestException as e:
+        return {'message': f"Connection error: {e}", 'status': 'error'}
+    except Exception as e:
+        return {'message': f"An error occurred: {e}", 'status': 'error'}
 
 if __name__ == "__main__":
-    
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
