@@ -44,9 +44,7 @@ def whatsapp_reply():
             
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number,
-            body=response_text['body'] +"\n\n" response_text['template_name'] +"\n" + response_text['components']
-
-
+            body=response_text['body'] +"\n\n" + response_text['template_name'] +"\n" + response_text['components']
         )
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
