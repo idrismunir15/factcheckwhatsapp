@@ -60,11 +60,11 @@ def handle_user_input(incoming_message):
     api_result = call_external_api(incoming_message)
     return (
         f"{api_result['message']}\n\n"
-        """
+        
         "👉 What would you like to do next?\n"
         "✅ Verify a Claim (Type 1) \n"
         "💬 Give us Feedback (Type 2)"
-        """
+        
         "Rate Us"
     )
 """
