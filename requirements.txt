@@ -4,3 +4,4 @@ twilio
 requests
 pyshorteners
 python-dotenv
+sqlite3
