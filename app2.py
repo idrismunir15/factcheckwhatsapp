@@ -38,11 +38,10 @@ conn = sqlite3.connect('users.db')
 c = conn.cursor()
 
 #Create a database
-def create_db():
-    # Create table to store user information
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                (whatsapp_id TEXT PRIMARY KEY, conversation_sid TEXT, last_message_time DATETIME)''')
-    conn.commit()
+# Create table to store user information
+c.execute('''CREATE TABLE IF NOT EXISTS users
+            (whatsapp_id TEXT PRIMARY KEY, conversation_sid TEXT, last_message_time DATETIME)''')
+conn.commit()
 
 
 #Check User: Determine if the user is new or needs a new conversation due to the 24-hour rule.
@@ -139,5 +138,5 @@ def whatsapp_webhook():
     return Response(status=200)
 
 if __name__ == "__main__":
-    create_db()
+    
     app.run(debug=True, port=5000)
