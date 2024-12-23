@@ -38,7 +38,7 @@ def whatsapp_reply():
     sender_number = request.form.get("From")
     
     response_text = handle_user_input(incoming_message)
-    
+    print(response_text)
     try:
         message = client.messages.create(
             body=response_text,
@@ -79,7 +79,7 @@ def handle_user_input(incoming_message):
         # For this example, we'll just send a message and ask for feedback:
         api_result = call_external_api(incoming_message)
         full_message = f"{api_result['message']}\n\nPlease rate my response:"
-        
+        print(full_message)
         return {
             'body': full_message,
             'template_name': "user_feedback",
