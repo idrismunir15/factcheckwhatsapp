@@ -41,10 +41,10 @@ def whatsapp_reply():
     #print(response_text)
     try:
         message = client.messages.create(
-            
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number,
-            body=response_text['body'] +"\n\n" + response_text['template_name'] +"\n" + response_text['components']
+            body=response_text['body'] 
+            #+"\n\n" + response_text['template_name'] +"\n" + response_text['components']
         )
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
@@ -82,7 +82,8 @@ def handle_user_input(incoming_message):
         # This is where you'd return your normal response or call your external API
         # For this example, we'll just send a message and ask for feedback:
         api_result = call_external_api(incoming_message)
-        full_message = f"{api_result['message']}\n\nPlease rate my response:"
+        full_message = f"{api_result['message']}
+        #\n\nPlease rate my response:"
         print(full_message)
         return {
             'body': full_message,
