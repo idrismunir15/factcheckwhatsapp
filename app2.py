@@ -82,7 +82,7 @@ def handle_user_input(incoming_message):
         # This is where you'd return your normal response or call your external API
         # For this example, we'll just send a message and ask for feedback:
         api_result = call_external_api(incoming_message)
-        full_message = f"{api_result['message']}
+        full_message = f"{api_result['message']}"
         #\n\nPlease rate my response:"
         print(full_message)
         return {
