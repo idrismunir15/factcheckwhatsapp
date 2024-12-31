@@ -123,8 +123,8 @@ def call_external_api(user_query):
         
         data = response.json()
         print(data)
-        if 'response' in data:
-            return {'message': data['response']}
+        if 'result' in data:
+            return {'message': data['result']}
         else:
             return {'message': "Unexpected API response format.", 'status': 'error'}
     
