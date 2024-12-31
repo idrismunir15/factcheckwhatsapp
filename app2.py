@@ -122,6 +122,7 @@ def call_external_api(user_query):
         response.raise_for_status()  # Will raise HTTPError for bad status codes
         
         data = response.json()
+        print(data)
         if 'response' in data:
             return {'message': data['response']}
         else:
