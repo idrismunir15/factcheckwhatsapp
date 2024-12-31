@@ -40,25 +40,17 @@ def whatsapp_reply():
     response_data = handle_user_input(incoming_message)
     
     try:
-        if response_data.get("use_template", False):
-            # Send message using template
-            message = client.messages.create(
-                from_=TWILIO_WHATSAPP_NUMBER,
-                to=sender_number,
-                content=None,  # Must be None when using templates
-                template=dict(
-                    name=response_data["template_name"],
-                    language=dict(code=response_data["language_code"]),
-                    components=response_data["components"]
-                )
-            )
-        else:
-            # Send regular message
-            message = client.messages.create(
-                from_=TWILIO_WHATSAPP_NUMBER,
-                to=sender_number,
-                body=response_data["body"]
-            )
+        # Send message with both text and template components
+        message = client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=sender_number,
+            body=response_data.get('body', ''),
+            messaging_service_sid=None,
+            persistent_action=[],
+            media_url=None,
+            status_callback=None,
+            template=response_data.get('template')
+        )
             
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
@@ -68,42 +60,45 @@ def whatsapp_reply():
 def handle_user_input(incoming_message):
     if incoming_message.lower() in ["thumbs_up", "thumbs_down", "👍 like", "👎 dislike"]:
         return {
-            "body": "Thank you for your feedback! 🙏",
-            "use_template": False
+            "body": "Thank you for your feedback! 🙏"
         }
     else:
         # Get response from external API
         api_result = call_external_api(incoming_message)
         
-        # Format the response using a template
+        # Return both message text and template data
         return {
-            "use_template": True,
-            "template_name": "fact_check_result",  # Your approved template name
-            "language_code": "en",  # Language code
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": api_result['message']}
-                    ]
+            "body": api_result['message'],
+            "template": {
+                "name": "user_feedback",  # Your approved template name
+                "language": {
+                    "code": "en"
                 },
-                {
-                    "type": "button",
-                    "sub_type": "quick_reply",
-                    "index": "0",
-                    "parameters": [
-                        {"type": "text", "text": "👍 Like"}
-                    ]
-                },
-                {
-                    "type": "button",
-                    "sub_type": "quick_reply",
-                    "index": "1",
-                    "parameters": [
-                        {"type": "text", "text": "👎 Dislike"}
-                    ]
-                }
-            ]
+                "components": [
+                    {
+                        "type": "button",
+                        "sub_type": "quick_reply",
+                        "index": "0",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": "👍 Like"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "button",
+                        "sub_type": "quick_reply",
+                        "index": "1",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": "👎 Dislike"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
 
 def call_external_api(user_query):
