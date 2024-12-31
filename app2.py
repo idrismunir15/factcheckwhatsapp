@@ -29,91 +29,78 @@ def hello():
 def message_status():
     message_sid = request.values.get("MessageSid")
     message_status = request.values.get("MessageStatus")
-    print(f"Message {message_sid} status: {message_status}")  # Log or store status
+    print(f"Message {message_sid} status: {message_status}")
     return "", 204
 
 @app.route("/whatsapp", methods=["POST", "GET"])
 def whatsapp_reply():
-    incoming_message = request.form.get("Body")
+    incoming_message = request.form.get("Body", "").strip()
     sender_number = request.form.get("From")
     
-    response_text = handle_user_input(incoming_message)
-    #print(response_text)
+    response_data = handle_user_input(incoming_message)
+    
     try:
-        message = client.messages.create(
-            from_=TWILIO_WHATSAPP_NUMBER,
-            to=sender_number,
-            body=response_text['body'],
-            interactive_data={
-                "template_name": response_text.get("template_name"),
-                "language": response_text.get("language"),
-                "components": response_text.get("components")
-            }
-        )
+        if response_data.get("use_template", False):
+            # Send message using template
+            message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=sender_number,
+                content=None,  # Must be None when using templates
+                template=dict(
+                    name=response_data["template_name"],
+                    language=dict(code=response_data["language_code"]),
+                    components=response_data["components"]
+                )
+            )
+        else:
+            # Send regular message
+            message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=sender_number,
+                body=response_data["body"]
+            )
+            
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
-        print(e)
+        print(f"Error sending message: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-"""
 def handle_user_input(incoming_message):
-    choices = {"💬": "2", "✅": "1"}
-    if incoming_message in choices:
+    if incoming_message.lower() in ["thumbs_up", "thumbs_down", "👍 like", "👎 dislike"]:
         return {
-            "✅": "Great! Please input your claim",
-            "💬": "Thank you for your feedback! Please share your thoughts."
-        }[incoming_message]
-    
-    api_result = call_external_api(incoming_message)
-    return (
-        f"{api_result['message']}\n\n"
-        
-        "👉 What would you like to do next?\n"
-        "✅ Verify a Claim (Type 1) \n"
-        "💬 Give us Feedback (Type 2)"
-        
-        "Rate Us"
-    )
-"""
-def handle_user_input(incoming_message):
-    if incoming_message in ["thumbs_up", "thumbs_down"]:
-        feedback = "👍 Thanks!" if incoming_message == "thumbs_up" else "👎 We'll improve."
-        return {
-            'body': feedback,
+            "body": "Thank you for your feedback! 🙏",
+            "use_template": False
         }
     else:
-        # This is where you'd return your normal response or call your external API
-        # For this example, we'll just send a message and ask for feedback:
+        # Get response from external API
         api_result = call_external_api(incoming_message)
-        full_message = f"{api_result['message']}"
-        #\n\nPlease rate my response:"
-        print(full_message)
+        
+        # Format the response using a template
         return {
-            'body': full_message,
-            'template_name': "user_feedback",
-            'language': "en_US",
-            'components': [
+            "use_template": True,
+            "template_name": "fact_check_result",  # Your approved template name
+            "language_code": "en",  # Language code
+            "components": [
                 {
-                    "type": "button",
-                    "sub_type": "quick_reply",
-                    "index": 0,
+                    "type": "body",
                     "parameters": [
-                        {
-                            "type": "text",
-                            "text": "👍 Like"
-                        }
+                        {"type": "text", "text": api_result['message']}
                     ]
                 },
                 {
                     "type": "button",
                     "sub_type": "quick_reply",
-                    "index": 1,
+                    "index": "0",
                     "parameters": [
-                        {
-                            "type": "text",
-                            "text": "👎 Dislike"
-                        }
+                        {"type": "text", "text": "👍 Like"}
+                    ]
+                },
+                {
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": "1",
+                    "parameters": [
+                        {"type": "text", "text": "👎 Dislike"}
                     ]
                 }
             ]
@@ -123,10 +110,9 @@ def call_external_api(user_query):
     try:
         payload = {"user_input": user_query}
         response = requests.post(EXTERNAL_API_URL, json=payload, timeout=30)
-        response.raise_for_status()  # Will raise HTTPError for bad status codes
+        response.raise_for_status()
         
         data = response.json()
-        print(data)
         if 'result' in data:
             return {'message': data['result']}
         else:
