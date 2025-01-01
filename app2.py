@@ -45,11 +45,11 @@ def whatsapp_reply():
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number,
             body=response_data.get('body', ''),
-            messaging_service_sid=None,
-            persistent_action=[],
-            media_url=None,
-            status_callback=None,
-            template=response_data.get('template')
+            #messaging_service_sid=None,
+            #persistent_action=[],
+            #media_url=None,
+            #status_callback=None,
+            #template=response_data.get('template')
         )
             
         return jsonify({"status": "success", "message_sid": message.sid})
