@@ -1,136 +1,171 @@
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, jsonify, session
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
-import time
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 from pyshorteners import Shortener
-
-
-s = Shortener()
+from datetime import datetime, timedelta
+import redis
 
 load_dotenv()
 
-
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
 
+# Redis configuration for session storage
+redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST"),
+    port=int(os.getenv("REDIS_PORT"),
+    password=os.getenv("REDIS_PASSWORD"),
+    decode_responses=True
+)
 
 # External API endpoint
-EXTERNAL_API_URL = "https://myapiprojects-production.up.railway.app/api/user-input/"
+EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
 
 # Twilio Credentials
-TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")  # Replace with your Twilio WhatsApp number
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")        # Replace with your Account SID
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")            # Replace with your Auth Token
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+shortener = Shortener()
 
+class ChatSession:
+    def __init__(self, sender_number):
+        self.sender_number = sender_number
+        self.last_activity = datetime.now()
+        self.conversation_history = []
+        
+    def to_dict(self):
+        return {
+            'sender_number': self.sender_number,
+            'last_activity': self.last_activity.isoformat(),
+            'conversation_history': self.conversation_history
+        }
+    
+    @staticmethod
+    def from_dict(data):
+        session = ChatSession(data['sender_number'])
+        session.last_activity = datetime.fromisoformat(data['last_activity'])
+        session.conversation_history = data['conversation_history']
+        return session
 
-@app.route("/") 
-def hello(): 
+def get_chat_session(sender_number):
+    """Retrieve or create a new chat session for the sender"""
+    session_key = f"chat_session:{sender_number}"
+    session_data = redis_client.get(session_key)
+    
+    if session_data:
+        # Convert JSON string to dictionary and create ChatSession object
+        session_dict = eval(session_data)  # Note: In production, use proper JSON parsing
+        session = ChatSession.from_dict(session_dict)
+    else:
+        session = ChatSession(sender_number)
+    
+    return session
+
+def save_chat_session(session):
+    """Save chat session to Redis"""
+    session_key = f"chat_session:{session.sender_number}"
+    redis_client.setex(
+        session_key,
+        timedelta(hours=24),  # Session expires after 24 hours of inactivity
+        str(session.to_dict())
+    )
+
+@app.route("/")
+def hello():
     return "Welcome to myaifactchecker.org"
 
-
-@app.route("/message_status", methods=["POST","GET"])
+@app.route("/message_status", methods=["POST", "GET"])
 def message_status():
     message_sid = request.values.get("MessageSid")
     message_status = request.values.get("MessageStatus")
-    print(f"Message {message_sid} status: {message_status}")  # Log or store status
-    return "", 204  # Return an empty response with 204 No Content
+    print(f"Message {message_sid} status: {message_status}")
+    return "", 204
 
-
-# Route to handle incoming WhatsApp messages
-@app.route("/whatsapp", methods=["POST","GET"])
+@app.route("/whatsapp", methods=["POST", "GET"])
 def whatsapp_reply():
-    # Parse the incoming message from Twilio
-    incoming_message = request.form.get("Body")
+    incoming_message = request.form.get("Body", "").strip()
     sender_number = request.form.get("From")
     
-    # Check if the user is responding with a choice
-    keys={"💬":"2", "✅":"1"}
-    if incoming_message == keys["✅"]:
-        response_text = "Great! Please input your claim"
-    elif incoming_message == keys["💬"]:
-        response_text = "Thank you for your feedback! Please share your thoughts."
-    else:
-        # Call the external API for other input
-        result = call_external_api(incoming_message)
-        response_text = (
-            f"{result['message']}\n\n"
-            "👉 What would you like to do next?\n"
-            "✅ Verify a Claim (Type 1) \n"
-            "💬 Give us Feedback (Type 2)\n"
-        )
+    # Get or create chat session for this sender
+    chat_session = get_chat_session(sender_number)
+    
+    # Update last activity
+    chat_session.last_activity = datetime.now()
+    
+    # Add incoming message to conversation history
+    chat_session.conversation_history.append({
+        'timestamp': datetime.now().isoformat(),
+        'message': incoming_message,
+        'type': 'incoming'
+    })
+    
+    # Handle the message
+    response_data = handle_user_input(incoming_message, chat_session)
+    
+    # Add response to conversation history
+    chat_session.conversation_history.append({
+        'timestamp': datetime.now().isoformat(),
+        'message': response_data.get('body', ''),
+        'type': 'outgoing'
+    })
+    
+    # Save updated session
+    save_chat_session(chat_session)
     
     try:
-        # Send the response message
+        # Send message
         message = client.messages.create(
-            body=response_text,
             from_=TWILIO_WHATSAPP_NUMBER,
-            to=sender_number
+            to=sender_number,
+            body=response_data.get('body', '')
         )
-
-        print(f"Message SID: {message.sid}")
-        response = {"status": "success", "message_sid": message.sid}
         
+        return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
-        print(f"Error sending message: {e}")
-        response = {"status": "error", "message": str(e)}
-    
-    return jsonify(response)
-        
-        
-        
-    
-    #return str(message)
+        print(f"Error sending message: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
+def handle_user_input(incoming_message, chat_session):
+    if incoming_message.lower() in ["thumbs_up", "thumbs_down", "👍 like", "👎 dislike"]:
+        return {
+            "body": "Thank you for your feedback! 🙏"
+        }
+    else:
+        # Get response from external API
+        api_result = call_external_api(incoming_message, chat_session)
+        
+        return {
+            "body": api_result['message']
+        }
 
-# Function to call external API
-def call_external_api(user_query):
+def call_external_api(user_query, chat_session):
     try:
-        payload = {"user_input": user_query}
-        headers = {"Content-Type": "application/json"}
+        # Include conversation history in API call if needed
+        payload = {
+            "user_input": user_query,
+            #"conversation_history": chat_session.conversation_history[-5:]  # Send last 5 messages for context
+        }
         
-        # Make the POST request to the external API
-        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=300)
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=60)
+        response.raise_for_status()
         
-
-        # Check for a successful response
-        if response.status_code in (200, 201): 
-            data = response.json() 
-
-            """
-            #convert links to shortlinks
-            url1=[s.tinyurl.short(url) for url in data['genuine_urls']]
-            url2=[s.tinyurl.short(url) for url in data['non_authentic_urls']]
-            
-            url=""
-            if len(url1)!=0:
-                url1.extend(url2)
-                url="SOURCES \n" + "\n".join(url1)
-             
-        
-            if 'fresult' in data:
-                return {'message': data['fresult']}  # Return a dictionary
-                #return {'message': data['fresult']+ "\n\n"  + url, 'status': 'success'}  # Return a dictionary
-            """
-            if 'response' in data:
-                return {'message': data['response']}
-            else:
-              return {'message': "Unexpected API response format.", 'status': 'error'}
+        data = response.json()
+        if 'result' in data:
+            return {'message': data['result']}
         else:
-            return {'message': "I am unable to answer your query. Please rephrase and try again.", 'status': 'error'}
-
+            return {'message': "Unexpected API response format.", 'status': 'error'}
+    
     except requests.exceptions.Timeout:
         return {'message': "Request timed out.", 'status': 'error'}
     except requests.exceptions.RequestException as e:
         return {'message': f"Connection error: {e}", 'status': 'error'}
-    except Exception as e:  # Catch other unexpected errors
+    except Exception as e:
         return {'message': f"An error occurred: {e}", 'status': 'error'}
 
-
-# Run the Flask app
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-    #app.run()
