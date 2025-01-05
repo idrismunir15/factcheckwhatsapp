@@ -16,7 +16,7 @@ app = Flask(__name__)
 # Redis configuration for session storage
 redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST"),
-    port=int(os.getenv("REDIS_PORT"),
+    port=int(os.getenv("REDIS_PORT")),
     password=os.getenv("REDIS_PASSWORD"),
     decode_responses=True
 )
