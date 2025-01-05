@@ -45,11 +45,6 @@ def whatsapp_reply():
             from_=TWILIO_WHATSAPP_NUMBER,
             to=sender_number,
             body=response_data.get('body', ''),
-            #messaging_service_sid=None,
-            #persistent_action=[],
-            #media_url=None,
-            #status_callback=None,
-            #template=response_data.get('template')
         )
             
         return jsonify({"status": "success", "message_sid": message.sid})
@@ -68,39 +63,9 @@ def handle_user_input(incoming_message):
         
         # Return both message text and template data
         return {
-            "body": api_result['message'],
-            "template": {
-                "name": "user_feedback",  # Your approved template name
-                "language": {
-                    "code": "en"
-                },
-                "components": [
-                    {
-                        "type": "button",
-                        "sub_type": "quick_reply",
-                        "index": "0",
-                        "parameters": [
-                            {
-                                "type": "text",
-                                "text": "👍 Like"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "button",
-                        "sub_type": "quick_reply",
-                        "index": "1",
-                        "parameters": [
-                            {
-                                "type": "text",
-                                "text": "👎 Dislike"
-                            }
-                        ]
-                    }
-                ]
-            }
+            "body": api_result['message']
         }
-
+            
 def call_external_api(user_query):
     try:
         payload = {"user_input": user_query}
