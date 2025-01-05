@@ -13,13 +13,27 @@ load_dotenv()
 app = Flask(__name__)
 #app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
 
-# Redis configuration for session storage
-redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST"),
-    port=int(os.getenv("REDIS_PORT")),
-    password=os.getenv("REDIS_PASSWORD"),
-    decode_responses=True
+# Redis configuration with connection pooling and retry logic
+REDIS_URL = os.getenv("REDIS_URL")  # Get the full Redis URL from environment
+retry = Retry(ExponentialBackoff(), 3)  # Retry 3 times with exponential backoff
+
+# Create a connection pool
+redis_pool = ConnectionPool.from_url(
+    REDIS_URL,
+    max_connections=10,  # Adjust based on your needs
+    socket_timeout=5,    # Socket timeout in seconds
+    socket_connect_timeout=2,  # Connection timeout
+    retry_on_timeout=True,
+    retry=retry
 )
+
+def get_redis_connection():
+    """Get a Redis connection from the pool with error handling"""
+    try:
+        return redis.Redis(connection_pool=redis_pool, decode_responses=True)
+    except (ConnectionError, TimeoutError) as e:
+        logger.error(f"Redis connection error: {str(e)}")
+        return None
 
 # External API endpoint
 EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
