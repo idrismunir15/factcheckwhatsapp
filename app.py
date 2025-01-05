@@ -11,7 +11,7 @@ import redis
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
+#app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
 
 # Redis configuration for session storage
 redis_client = redis.Redis(
