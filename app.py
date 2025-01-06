@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
-#app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
+app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
 
 # Redis configuration with connection pooling and retry logic
 REDIS_URL = os.getenv("REDIS_URL")  # Get the full Redis URL from environment
