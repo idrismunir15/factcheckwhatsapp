@@ -64,9 +64,10 @@ def needs_rating(response_text):
     # Responses that don't need rating
     casual_patterns = [
         "thank you", "thanks", "you're welcome", "noted",
-        "got it", "understood", "👍", "🙏", 
+        "got it", "understood", "👍", "🙏", "nice","bravo","amazing","impressive",
         "sorry", "please", "hi", "hello", "hey", "good morning", "good afternoon", 
-        "good evening", "thanks", "thank you", "bye", "goodbye"
+        "good evening", "thanks", "thank you", "bye", "goodbye", "cool","yeah","yah","alright",
+        "oh","oops"
     ]
     
     text = response_text.lower().strip()
