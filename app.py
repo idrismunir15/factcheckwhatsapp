@@ -153,4 +153,110 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
         else:
             # Send normal response with feedback template
             message = client.messages.create(
-                from_=TWILIO_WHATS
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=to_number,
+                body=body_text,
+                messaging_service_sid=os.getenv("TWILIO_MESSAGING_SERVICE_SID"),
+                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+            )
+        return message
+    except Exception as e:
+        logger.error(f"Error sending message: {str(e)}")
+        raise
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_reply():
+    try:
+        incoming_message = request.form.get("Body", "").strip()
+        sender_number = request.form.get("From")
+        
+        # Get or create chat session for this sender
+        chat_session = get_chat_session(sender_number)
+        
+        # Check if this is an interactive message response
+        button_response = request.form.get("ButtonText")
+        if button_response in ["thumbs_up", "thumbs_down"]:
+            feedback_type = "positive" if button_response == "thumbs_up" else "negative"
+            if chat_session.last_message_id:
+                store_feedback(chat_session.last_message_id, feedback_type, sender_number)
+                
+                message = client.messages.create(
+                    from_=TWILIO_WHATSAPP_NUMBER,
+                    to=sender_number,
+                    body="Thank you for your feedback! 🙏"
+                )
+                return jsonify({"status": "success", "message_sid": message.sid})
+        
+        # Send welcome message for new sessions
+        if chat_session.is_new_session:
+            welcome_message = send_message_with_template(
+                sender_number,
+                create_welcome_message(),
+                is_greeting=True
+            )
+            
+            chat_session.conversation_history.append({
+                "timestamp": datetime.now().isoformat(),
+                "message": create_welcome_message(),
+                "type": "outgoing",
+                "message_id": welcome_message.sid
+            })
+        
+        # Add incoming message to conversation history
+        chat_session.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "message": incoming_message,
+            "type": "incoming"
+        })
+        
+        # Get response from API
+        api_response = call_external_api(incoming_message, chat_session)
+        response_text = api_response.get("message", "")
+        
+        # Send response with template
+        message = send_message_with_template(sender_number, response_text)
+        
+        # Store the message ID for feedback
+        chat_session.last_message_id = message.sid
+        
+        # Add response to conversation history
+        chat_session.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "message": response_text,
+            "type": "outgoing",
+            "message_id": message.sid
+        })
+        
+        # Update last activity and save session
+        chat_session.last_activity = datetime.now()
+        save_chat_session(chat_session)
+        
+        return jsonify({"status": "success", "message_sid": message.sid})
+    except Exception as e:
+        logger.error(f"Error in whatsapp_reply: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+def call_external_api(user_query, chat_session):
+    try:
+        payload = {
+            "user_input": user_query
+        }
+        
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=60)
+        response.raise_for_status()
+        
+        data = response.json()
+        if "result" in data:
+            return {"message": data["result"]}
+        else:
+            return {"message": "Unexpected API response format.", "status": "error"}
+    
+    except requests.exceptions.Timeout:
+        return {"message": "Request timed out.", "status": "error"}
+    except requests.exceptions.RequestException as e:
+        return {"message": f"Connection error: {e}", "status": "error"}
+    except Exception as e:
+        return {"message": f"An error occurred: {e}", "status": "error"}
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000, debug=True)
