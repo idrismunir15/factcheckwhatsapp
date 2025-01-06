@@ -1,3 +1,5 @@
+Flask WhatsApp Chat Application with Session Management
+
 from flask import Flask, request, jsonify, session
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
@@ -13,6 +15,7 @@ from redis.retry import Retry
 from redis.backoff import ExponentialBackoff
 from redis.exceptions import ConnectionError, TimeoutError
 import logging
+import ssl
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,30 +24,28 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")  # Add a secret key for session management
+app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
-# Redis configuration with connection pooling and retry logic
-REDIS_URL = os.getenv("REDIS_URL")  # Get the full Redis URL from environment
-retry = Retry(ExponentialBackoff(), 3)  # Retry 3 times with exponential backoff
+# Redis configuration with SSL
+REDIS_URL = os.getenv("REDIS_URL")
+retry = Retry(ExponentialBackoff(), 3)
 
-# Create a connection pool
+# Create SSL context
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+# Create a connection pool with SSL settings
 redis_pool = ConnectionPool.from_url(
     REDIS_URL,
-    max_connections=10,  # Adjust based on your needs
-    socket_timeout=5,    # Socket timeout in seconds
-    socket_connect_timeout=2,  # Connection timeout
+    max_connections=10,
+    socket_timeout=5,
+    socket_connect_timeout=2,
     retry_on_timeout=True,
-    retry=retry
+    retry=retry,
+    ssl=True,
+    ssl_cert_reqs=None  # Don't verify SSL certificates
 )
-
-def get_redis_connection():
-    """Get a Redis connection from the pool with error handling"""
-    try:
-        return redis.Redis(connection_pool=redis_pool, decode_responses=True)
-    except (ConnectionError, TimeoutError) as e:
-        logger.error(f"Redis connection error: {str(e)}")
-        return None
-
 
 # Initialize global Redis client
 redis_client = redis.Redis(connection_pool=redis_pool, decode_responses=True)
