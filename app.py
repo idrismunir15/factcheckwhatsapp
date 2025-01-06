@@ -143,23 +143,23 @@ def store_feedback(message_id, feedback_type, sender_number):
 def send_message_with_template(to_number, body_text, is_greeting=False):
     """Send message with or without template based on message type"""
     try:
-        if is_greeting:
-            # Send greeting without feedback template
-            message = client.messages.create(
+        # First send the main message
+        main_message = client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=to_number,
+            body=body_text
+        )
+        
+        # If it's not a greeting, send the template as a follow-up message
+        if not is_greeting:
+            template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
-                body=body_text
+                body="Was this response helpful?",
+                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
-        else:
-            # Send normal response with feedback template
-            message = client.messages.create(
-                from_=TWILIO_WHATSAPP_NUMBER,
-                to=to_number,
-                body=body_text,
-                #messaging_service_sid=os.getenv("TWILIO_MESSAGING_SERVICE_SID"),
-                #content_sid=os.getenv("TWILIO_TEMPLATE_SID")
-            )
-        return message
+            return template_message  # Return the template message for tracking feedback
+        return main_message
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
         raise
