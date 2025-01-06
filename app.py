@@ -16,6 +16,9 @@ from redis.backoff import ExponentialBackoff
 from redis.exceptions import ConnectionError, TimeoutError
 import logging
 import ssl
+import os
+from urllib.parse import urlparse
+import redis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,28 +30,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
 # Redis configuration with SSL
-REDIS_URL = os.getenv("REDIS_URL")
-retry = Retry(ExponentialBackoff(), 3)
-
-# Create SSL context
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
-# Create a connection pool with SSL settings
-redis_pool = ConnectionPool.from_url(
-    REDIS_URL,
-    max_connections=10,
-    socket_timeout=5,
-    socket_connect_timeout=2,
-    retry_on_timeout=True,
-    retry=retry,
-    ssl=True,
-    ssl_cert_reqs=None  # Don't verify SSL certificates
-)
-
-# Initialize global Redis client
-redis_client = redis.Redis(connection_pool=redis_pool, decode_responses=True)
+url = urlparse(os.environ.get("REDIS_URL"))
+redis_client = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
 
 # External API endpoint
 EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
