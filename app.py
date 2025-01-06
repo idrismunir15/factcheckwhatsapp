@@ -210,7 +210,7 @@ def whatsapp_reply():
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "")
         
-        message = send_message_with_template(sender_number, response_text)
+        message = send_message_with_template(sender_number, incoming_message)
         chat_session.last_message_id = message.sid
         
         chat_session.conversation_history.append({
