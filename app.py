@@ -67,7 +67,7 @@ def needs_rating(response_text):
         "got it", "understood", "👍", "🙏", "nice","bravo","amazing","impressive",
         "sorry", "please", "hi", "hello", "hey", "good morning", "good afternoon", 
         "good evening", "thanks", "thank you", "bye", "goodbye", "cool","yeah","yah","alright",
-        "oh","oops"
+        "oh","oops","ok"
     ]
     
     text = response_text.lower().strip()
