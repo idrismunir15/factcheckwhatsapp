@@ -45,6 +45,10 @@ def get_redis_connection():
         logger.error(f"Redis connection error: {str(e)}")
         return None
 
+
+# Initialize global Redis client
+redis_client = redis.Redis(connection_pool=redis_pool, decode_responses=True)
+
 # External API endpoint
 EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
 
