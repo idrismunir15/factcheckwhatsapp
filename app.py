@@ -65,7 +65,7 @@ def get_chat_session(sender_number):
     session_data = redis_client.get(session_key)
     
     if session_data:
-        session_dict = json.loads(session_data.decode('utf-8'))
+        session_dict = json.loads(session_data.decode("utf-8"))
         session = ChatSession.from_dict(session_dict)
         
         # Check if last activity was more than 24 hours ago
