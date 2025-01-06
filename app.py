@@ -156,8 +156,8 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
                 body=body_text,
-                messaging_service_sid=os.getenv("TWILIO_MESSAGING_SERVICE_SID"),
-                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+                #messaging_service_sid=os.getenv("TWILIO_MESSAGING_SERVICE_SID"),
+                #content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
         return message
     except Exception as e:
