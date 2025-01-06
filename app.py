@@ -61,11 +61,7 @@ class ChatSession:
         return session
 
 def is_casual_statement(response_text):
-    casual_indicators = [
-        "Thank you", "You're welcome", "Got it",
-        "I understand", "Thanks for", "Noted",
-        "👍", "🙏", "Please"
-    ]
+    casual_indicators = [ "Thank you", "You're welcome", "Got it",  "I understand", "Thanks for", "Noted",  "👍", "🙏", "Please"]
     is_short = len(response_text.split()) < 10
     has_casual_words = any(indicator.lower() in response_text.lower() 
                           for indicator in casual_indicators)
@@ -210,7 +206,7 @@ def whatsapp_reply():
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "")
         
-        message = send_message_with_template(sender_number, incoming_message)
+        message = send_message_with_template(sender_number, response_text)
         chat_session.last_message_id = message.sid
         
         chat_session.conversation_history.append({
