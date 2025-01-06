@@ -60,12 +60,23 @@ class ChatSession:
         session.is_new_session = False
         return session
 
-def is_casual_statement(response_text):
-    casual_indicators = [ "Thank you", "You're welcome", "Got it",  "I understand", "Thanks for", "Noted",  "👍", "🙏", "Please"]
-    is_short = len(response_text.split()) < 10
-    has_casual_words = any(indicator.lower() in response_text.lower() 
-                          for indicator in casual_indicators)
-    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊')))
+def needs_rating(response_text):
+    # Responses that don't need rating
+    casual_patterns = [
+        "thank you", "thanks", "you're welcome", "noted",
+        "got it", "understood", "👍", "🙏", 
+        "sorry", "please"
+    ]
+    
+    text = response_text.lower().strip()
+    
+    # Check conditions
+    is_short = len(text.split()) < 10
+    is_casual = any(pattern in text for pattern in casual_patterns)
+    is_error = "error" in text or "an error occurred" in text
+    has_emoji_ending = text.endswith(('!', '👋', '🙂', '😊'))
+    
+    return not (is_short and (is_casual or has_emoji_ending or is_error))
 
 def get_chat_session(sender_number):
     session_key = f"chat_session:{sender_number}"
@@ -129,7 +140,7 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
             body=body_text
         )
         
-        if not is_greeting and not is_casual_statement(body_text):
+        if not is_greeting and needs_rating(body_text):
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
