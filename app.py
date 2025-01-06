@@ -140,6 +140,19 @@ def store_feedback(message_id, feedback_type, sender_number):
     except Exception as e:
         logger.error(f"Error storing feedback: {e}")
 
+def is_casual_statement(response_text):
+    """
+    Determine if the response is a casual statement that doesn't need feedback
+    """
+    casual_indicators = ["Thank you", "You're welcome", "Got it", "I understand", "Thanks for", "Noted", "👍",   "🙏", "Please", "Ok"]
+    
+    # Check if the response is short and contains casual indicators
+    is_short = len(response_text.split()) < 10
+    has_casual_words = any(indicator.lower() in response_text.lower() 
+                          for indicator in casual_indicators)
+    
+    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊'))
+                         
 def send_message_with_template(to_number, body_text, is_greeting=False):
     """Send message with or without template based on message type"""
     try:
@@ -150,8 +163,8 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
             body=body_text
         )
         
-        # If it's not a greeting, send the template as a follow-up message
-        if not is_greeting:
+        # If it's not a greeting and not a casual statement, send the template
+        if not is_greeting and not is_casual_statement(body_text):
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
@@ -163,25 +176,6 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
         raise
-
-def handle_button_response(button_text, chat_session, sender_number):
-    """Handle template button responses"""
-    try:
-        if button_text in ["Pleased", "Not Pleased"]:
-            feedback_type = "positive" if button_text == "Pleased" else "negative"
-            if chat_session.last_message_id:
-                store_feedback(chat_session.last_message_id, feedback_type, sender_number)
-                
-                message = client.messages.create(
-                    from_=TWILIO_WHATSAPP_NUMBER,
-                    to=sender_number,
-                    body="Thank you for your feedback! 🙏"
-                )
-                return True, message.sid
-        return False, None
-    except Exception as e:
-        logger.error(f"Error handling button response: {e}")
-        return False, None
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
@@ -225,7 +219,7 @@ def whatsapp_reply():
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "")
         
-        # Send response with template for rating
+        # Send main response and template (if needed)
         message = send_message_with_template(sender_number, response_text)
         
         # Store the message ID for feedback
@@ -247,28 +241,3 @@ def whatsapp_reply():
     except Exception as e:
         logger.error(f"Error in whatsapp_reply: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-def call_external_api(user_query, chat_session):
-    try:
-        payload = {
-            "user_input": user_query
-        }
-        
-        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=60)
-        response.raise_for_status()
-        
-        data = response.json()
-        if "result" in data:
-            return {"message": data["result"]}
-        else:
-            return {"message": "Unexpected API response format.", "status": "error"}
-    
-    except requests.exceptions.Timeout:
-        return {"message": "Request timed out.", "status": "error"}
-    except requests.exceptions.RequestException as e:
-        return {"message": f"Connection error: {e}", "status": "error"}
-    except Exception as e:
-        return {"message": f"An error occurred: {e}", "status": "error"}
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
