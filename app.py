@@ -144,7 +144,7 @@ def is_casual_statement(response_text):
     """
     Determine if the response is a casual statement that doesn't need feedback
     """
-    casual_indicators = ["Thank you", "You're welcome", "Got it", "I understand", "Thanks for", "Noted", "👍",   "🙏", "Please", "Ok"]
+    casual_indicators = ["Thank you", "You're welcome", "Got it", "I understand", "Thanks for", "Noted", "👍",   "🙏", "Please", "Ok","I want"]
     
     # Check if the response is short and contains casual indicators
     is_short = len(response_text.split()) < 10
