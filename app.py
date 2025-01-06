@@ -65,7 +65,8 @@ def needs_rating(response_text):
     casual_patterns = [
         "thank you", "thanks", "you're welcome", "noted",
         "got it", "understood", "👍", "🙏", 
-        "sorry", "please"
+        "sorry", "please", "hi", "hello", "hey", "good morning", "good afternoon", 
+        "good evening", "thanks", "thank you", "bye", "goodbye"
     ]
     
     text = response_text.lower().strip()
@@ -132,7 +133,7 @@ def store_feedback(message_id, feedback_type, sender_number):
     except Exception as e:
         logger.error(f"Error storing feedback: {e}")
 
-def send_message_with_template(to_number, body_text, is_greeting=False):
+def send_message_with_template(to_number, body_text, user_input, is_greeting=False):
     try:
         main_message = client.messages.create(
             from_=TWILIO_WHATSAPP_NUMBER,
@@ -140,7 +141,7 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
             body=body_text
         )
         
-        if not is_greeting and needs_rating(body_text):
+        if not is_greeting and needs_rating(user_input):
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
