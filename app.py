@@ -151,7 +151,7 @@ def is_casual_statement(response_text):
     has_casual_words = any(indicator.lower() in response_text.lower() 
                           for indicator in casual_indicators)
     
-    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊'))
+    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊')))
                          
 def send_message_with_template(to_number, body_text, is_greeting=False):
     """Send message with or without template based on message type"""
