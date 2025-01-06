@@ -3,10 +3,20 @@ from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
 import os
+import json
 from dotenv import load_dotenv
 from pyshorteners import Shortener
 from datetime import datetime, timedelta
 import redis
+from redis.connection import ConnectionPool
+from redis.retry import Retry
+from redis.backoff import ExponentialBackoff
+from redis.exceptions import ConnectionError, TimeoutError
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
