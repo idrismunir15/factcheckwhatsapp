@@ -164,6 +164,25 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
         logger.error(f"Error sending message: {str(e)}")
         raise
 
+def handle_button_response(button_text, chat_session, sender_number):
+    """Handle template button responses"""
+    try:
+        if button_text in ["Pleased", "Not Pleased"]:
+            feedback_type = "positive" if button_text == "Pleased" else "negative"
+            if chat_session.last_message_id:
+                store_feedback(chat_session.last_message_id, feedback_type, sender_number)
+                
+                message = client.messages.create(
+                    from_=TWILIO_WHATSAPP_NUMBER,
+                    to=sender_number,
+                    body="Thank you for your feedback! 🙏"
+                )
+                return True, message.sid
+        return False, None
+    except Exception as e:
+        logger.error(f"Error handling button response: {e}")
+        return False, None
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
@@ -173,19 +192,12 @@ def whatsapp_reply():
         # Get or create chat session for this sender
         chat_session = get_chat_session(sender_number)
         
-        # Check if this is an interactive message response
-        button_response = request.form.get("ButtonText")
-        if button_response in ["thumbs_up", "thumbs_down"]:
-            feedback_type = "positive" if button_response == "thumbs_up" else "negative"
-            if chat_session.last_message_id:
-                store_feedback(chat_session.last_message_id, feedback_type, sender_number)
-                
-                message = client.messages.create(
-                    from_=TWILIO_WHATSAPP_NUMBER,
-                    to=sender_number,
-                    body="Thank you for your feedback! 🙏"
-                )
-                return jsonify({"status": "success", "message_sid": message.sid})
+        # Check if this is a button response
+        button_text = request.form.get("ButtonText")
+        if button_text:
+            is_feedback, message_sid = handle_button_response(button_text, chat_session, sender_number)
+            if is_feedback:
+                return jsonify({"status": "success", "message_sid": message_sid})
         
         # Send welcome message for new sessions
         if chat_session.is_new_session:
@@ -213,7 +225,7 @@ def whatsapp_reply():
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "")
         
-        # Send response with template
+        # Send response with template for rating
         message = send_message_with_template(sender_number, response_text)
         
         # Store the message ID for feedback
