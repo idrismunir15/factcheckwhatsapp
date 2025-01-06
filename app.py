@@ -10,7 +10,6 @@ import redis
 from urllib.parse import urlparse
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,14 +18,16 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
-# Redis configuration with SSL
 url = urlparse(os.environ.get("REDIS_URL"))
-redis_client = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
+redis_client = redis.Redis(
+    host=url.hostname,
+    port=url.port,
+    password=url.password,
+    ssl=(url.scheme == "rediss"),
+    ssl_cert_reqs=None
+)
 
-# External API endpoint
 EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
-
-# Twilio Credentials
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
@@ -42,7 +43,6 @@ class ChatSession:
         self.is_new_session = True
         
     def to_dict(self):
-        """Convert session to a JSON-serializable dictionary"""
         return {
             "sender_number": self.sender_number,
             "last_activity": self.last_activity.isoformat(),
@@ -53,7 +53,6 @@ class ChatSession:
     
     @staticmethod
     def from_dict(data):
-        """Create session from a dictionary"""
         session = ChatSession(data["sender_number"])
         session.last_activity = datetime.fromisoformat(data["last_activity"])
         session.conversation_history = data["conversation_history"]
@@ -61,60 +60,51 @@ class ChatSession:
         session.is_new_session = False
         return session
 
+def is_casual_statement(response_text):
+    casual_indicators = [
+        "Thank you", "You're welcome", "Got it",
+        "I understand", "Thanks for", "Noted",
+        "👍", "🙏", "Please"
+    ]
+    is_short = len(response_text.split()) < 10
+    has_casual_words = any(indicator.lower() in response_text.lower() 
+                          for indicator in casual_indicators)
+    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊')))
+
 def get_chat_session(sender_number):
-    """Retrieve or create a new chat session for the sender"""
     session_key = f"chat_session:{sender_number}"
     try:
         session_data = redis_client.get(session_key)
-        
         if session_data:
-            # Properly decode bytes to string and parse JSON
             session_dict = json.loads(session_data.decode('utf-8'))
             session = ChatSession.from_dict(session_dict)
-            
-            # Check if session is expired (>24 hours)
             last_activity = datetime.fromisoformat(session_dict["last_activity"])
             if datetime.now() - last_activity > timedelta(hours=24):
-                logger.info(f"Session expired for {sender_number}")
                 session = ChatSession(sender_number)
         else:
-            logger.info(f"Creating new session for {sender_number}")
             session = ChatSession(sender_number)
-        
         return session
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"Error decoding session data: {e}")
-        return ChatSession(sender_number)
     except Exception as e:
         logger.error(f"Error getting chat session: {e}")
         return ChatSession(sender_number)
 
 def save_chat_session(session):
-    """Save chat session to Redis"""
     try:
         session_key = f"chat_session:{session.sender_number}"
         session_data = json.dumps(session.to_dict())
-        redis_client.setex(
-            session_key,
-            timedelta(hours=24),
-            session_data
-        )
+        redis_client.setex(session_key, timedelta(hours=24), session_data)
     except Exception as e:
         logger.error(f"Error saving chat session: {e}")
 
 def get_greeting_message():
-    """Returns appropriate greeting based on time of day"""
     hour = datetime.now().hour
     if 5 <= hour < 12:
         return "Good morning! 🌅"
     elif 12 <= hour < 17:
         return "Good afternoon! 🌞"
-    else:
-        return "Good evening! 🌙"
+    return "Good evening! 🌙"
 
 def create_welcome_message():
-    """Creates a welcome message for new users or returning users after 24h"""
     greeting = get_greeting_message()
     return (
         f"{greeting} Welcome to AI Fact Checker! 🤖✨\n\n"
@@ -124,7 +114,6 @@ def create_welcome_message():
     )
 
 def store_feedback(message_id, feedback_type, sender_number):
-    """Store user feedback in Redis"""
     try:
         feedback_key = f"feedback:{message_id}"
         feedback_data = {
@@ -132,38 +121,18 @@ def store_feedback(message_id, feedback_type, sender_number):
             "feedback_type": feedback_type,
             "sender_number": sender_number
         }
-        redis_client.setex(
-            feedback_key,
-            timedelta(days=30),
-            json.dumps(feedback_data)
-        )
+        redis_client.setex(feedback_key, timedelta(days=30), json.dumps(feedback_data))
     except Exception as e:
         logger.error(f"Error storing feedback: {e}")
 
-def is_casual_statement(response_text):
-    """
-    Determine if the response is a casual statement that doesn't need feedback
-    """
-    casual_indicators = ["Thank you", "You're welcome", "Got it", "I understand", "Thanks for", "Noted", "👍",   "🙏", "Please", "Ok","I want"]
-    
-    # Check if the response is short and contains casual indicators
-    is_short = len(response_text.split()) < 10
-    has_casual_words = any(indicator.lower() in response_text.lower() 
-                          for indicator in casual_indicators)
-    
-    return is_short and (has_casual_words or response_text.endswith(('!', '👋', '🙂', '😊')))
-                         
 def send_message_with_template(to_number, body_text, is_greeting=False):
-    """Send message with or without template based on message type"""
     try:
-        # First send the main message
         main_message = client.messages.create(
             from_=TWILIO_WHATSAPP_NUMBER,
             to=to_number,
             body=body_text
         )
         
-        # If it's not a greeting and not a casual statement, send the template
         if not is_greeting and not is_casual_statement(body_text):
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
@@ -171,20 +140,18 @@ def send_message_with_template(to_number, body_text, is_greeting=False):
                 body="Was this response helpful?",
                 content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
-            return template_message  # Return the template message for tracking feedback
+            return template_message
         return main_message
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
         raise
-        
+
 def handle_button_response(button_text, chat_session, sender_number):
-    """Handle template button responses"""
     try:
         if button_text in ["Pleased", "Not Pleased"]:
             feedback_type = "positive" if button_text == "Pleased" else "negative"
             if chat_session.last_message_id:
                 store_feedback(chat_session.last_message_id, feedback_type, sender_number)
-                
                 message = client.messages.create(
                     from_=TWILIO_WHATSAPP_NUMBER,
                     to=sender_number,
@@ -195,31 +162,38 @@ def handle_button_response(button_text, chat_session, sender_number):
     except Exception as e:
         logger.error(f"Error handling button response: {e}")
         return False, None
-        
+
+def call_external_api(user_query, chat_session):
+    try:
+        payload = {"user_input": user_query}
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        return {"message": data.get("result", "Unexpected API response format.")}
+    except Exception as e:
+        logger.error(f"Error calling external API: {e}")
+        return {"message": f"An error occurred: {e}", "status": "error"}
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
         incoming_message = request.form.get("Body", "").strip()
         sender_number = request.form.get("From")
         
-        # Get or create chat session for this sender
         chat_session = get_chat_session(sender_number)
         
-        # Check if this is a button response
         button_text = request.form.get("ButtonText")
         if button_text:
             is_feedback, message_sid = handle_button_response(button_text, chat_session, sender_number)
             if is_feedback:
                 return jsonify({"status": "success", "message_sid": message_sid})
         
-        # Send welcome message for new sessions
         if chat_session.is_new_session:
             welcome_message = send_message_with_template(
                 sender_number,
                 create_welcome_message(),
                 is_greeting=True
             )
-            
             chat_session.conversation_history.append({
                 "timestamp": datetime.now().isoformat(),
                 "message": create_welcome_message(),
@@ -227,24 +201,18 @@ def whatsapp_reply():
                 "message_id": welcome_message.sid
             })
         
-        # Add incoming message to conversation history
         chat_session.conversation_history.append({
             "timestamp": datetime.now().isoformat(),
             "message": incoming_message,
             "type": "incoming"
         })
         
-        # Get response from API
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "")
         
-        # Send main response and template (if needed)
         message = send_message_with_template(sender_number, response_text)
-        
-        # Store the message ID for feedback
         chat_session.last_message_id = message.sid
         
-        # Add response to conversation history
         chat_session.conversation_history.append({
             "timestamp": datetime.now().isoformat(),
             "message": response_text,
@@ -252,7 +220,6 @@ def whatsapp_reply():
             "message_id": message.sid
         })
         
-        # Update last activity and save session
         chat_session.last_activity = datetime.now()
         save_chat_session(chat_session)
         
@@ -261,26 +228,5 @@ def whatsapp_reply():
         logger.error(f"Error in whatsapp_reply: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-def call_external_api(user_query, chat_session):
-    try:
-        payload = {
-            "user_input": user_query
-        }
-        
-        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=60)
-        response.raise_for_status()
-        
-        data = response.json()
-        if "result" in data:
-            return {"message": data["result"]}
-        else:
-            return {"message": "Unexpected API response format.", "status": "error"}
-    
-    except requests.exceptions.Timeout:
-        return {"message": "Request timed out.", "status": "error"}
-    except requests.exceptions.RequestException as e:
-        return {"message": f"Connection error: {e}", "status": "error"}
-    except Exception as e:
-        return {"message": f"An error occurred: {e}", "status": "error"}
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
