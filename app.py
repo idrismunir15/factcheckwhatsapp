@@ -141,7 +141,7 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
             to=to_number,
             body=body_text
         )
-        
+        time.sleep(1)
         if not is_greeting and needs_rating(user_input):
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
