@@ -220,6 +220,8 @@ def whatsapp_reply():
         
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "I am unable to provide response now, please try your query again.")
+
+        print(response_text)
         
         message = send_message_with_template(sender_number, response_text,incoming_message)
         chat_session.last_message_id = message.sid
