@@ -5,4 +5,5 @@ requests
 pyshorteners
 python-dotenv
 redis
-
+SpeechRecognition
+pydub
