@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import redis
 from urllib.parse import urlparse
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
