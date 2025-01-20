@@ -64,6 +64,45 @@ class ChatSession:
         session.is_new_session = False
         return session
 
+
+def send_message_with_template(to_number, body_text, user_input, is_greeting=False):
+    try:
+        main_message = client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=to_number,
+            body=body_text
+        )
+        time.sleep(1)
+        if not is_greeting and needs_rating(user_input):
+            template_message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=to_number,
+                body="Was this response helpful?",
+                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+            )
+            return template_message
+        return main_message
+    except Exception as e:
+        logger.error(f"Error sending message: {str(e)}")
+        raise
+
+def get_greeting_message():
+    hour = datetime.now().hour
+    if 5 <= hour < 12:
+        return "Good morning! 🌅"
+    elif 12 <= hour < 17:
+        return "Good afternoon! 🌞"
+    return "Good evening! 🌙"
+
+def create_welcome_message():
+    greeting = get_greeting_message()
+    return (
+        f"{greeting} Welcome to AI Fact Checker! 🤖✨\n\n"
+        "I'm here to help you verify information and check facts. "
+        "Feel free to ask me any questions or share statements you'd like to fact-check.\n\n"
+        "To get started, simply type your question or statement or send a voice message! 📝🎤"
+    )
+    
 def process_voice_message(media_url):
     try:
         # Create a temporary directory for audio processing
