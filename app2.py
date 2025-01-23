@@ -9,10 +9,8 @@ from datetime import datetime, timedelta
 import redis
 from urllib.parse import urlparse
 import logging
-import speech_recognition as sr
-from pydub import AudioSegment
-import tempfile
-import urllib.request
+import time
+from googletrans import Translator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,13 +36,66 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
+# Multilingual Support
+SUPPORTED_LANGUAGES = {
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'zh-cn': 'Chinese (Simplified)',
+    'ar': 'Arabic'
+}
+
+WELCOME_MESSAGES = {
+    'en': (
+        "Welcome to AI Fact Checker! 🤖✨\n\n"
+        "I'm here to help you verify information and check facts. "
+        "Feel free to ask me any questions or share statements you'd like to fact-check.\n\n"
+        "To get started, simply type your question or statement! 📝"
+    ),
+    'es': (
+        "¡Bienvenido a Verificador de Hechos de IA! 🤖✨\n\n"
+        "Estoy aquí para ayudarte a verificar información y comprobar datos. "
+        "Siéntete libre de hacerme cualquier pregunta o compartir declaraciones que quieras verificar.\n\n"
+        "¡Para comenzar, simplemente escribe tu pregunta o declaración! 📝"
+    ),
+    'fr': (
+        "Bienvenue sur le Vérificateur de Faits par IA ! 🤖✨\n\n"
+        "Je suis là pour vous aider à vérifier les informations et à fact-checker. "
+        "N'hésitez pas à me poser des questions ou à partager des déclarations que vous souhaitez vérifier.\n\n"
+        "Pour commencer, tapez simplement votre question ou déclaration ! 📝"
+    ),
+    'de': (
+        "Willkommen beim KI-Faktenprüfer! 🤖✨\n\n"
+        "Ich bin hier, um Ihnen bei der Überprüfung von Informationen zu helfen. "
+        "Zögern Sie nicht, mir Fragen zu stellen oder Aussagen zur Überprüfung vorzulegen.\n\n"
+        "Um zu beginnen, stellen Sie einfach Ihre Frage oder Aussage! 📝"
+    ),
+    'zh-cn': (
+        "欢迎使用AI事实核查器！🤖✨\n\n"
+        "我在这里帮助您验证信息和检查事实。"
+        "随时可以向我提出问题或分享您想核实的陈述。\n\n"
+        "开始吧，直接输入您的问题或陈述！📝"
+    ),
+    'ar': (
+        "مرحبًا بك في مدقق الحقائق بالذكاء الاصطناعي! 🤖✨\n\n"
+        "أنا هنا لمساعدتك في التحقق من المعلومات والتحقق من الحقائق. "
+        "لا تتردد في طرح أي أسئلة أو مشاركة البيانات التي ترغب في التحقق منها.\n\n"
+        "للبدء، ببساطة اكتب سؤالك أو بيانك! 📝"
+    )
+}
+
+# Translator for dynamic translations
+translator = Translator()
+
 class ChatSession:
-    def __init__(self, sender_number):
+    def __init__(self, sender_number, language='en'):
         self.sender_number = sender_number
         self.last_activity = datetime.now()
         self.conversation_history = []
         self.last_message_id = None
         self.is_new_session = True
+        self.language = language
         
     def to_dict(self):
         return {
@@ -52,104 +103,32 @@ class ChatSession:
             "last_activity": self.last_activity.isoformat(),
             "conversation_history": self.conversation_history,
             "last_message_id": self.last_message_id,
-            "is_new_session": self.is_new_session
+            "is_new_session": self.is_new_session,
+            "language": self.language
         }
     
     @staticmethod
     def from_dict(data):
-        session = ChatSession(data["sender_number"])
+        session = ChatSession(data["sender_number"], data.get("language", 'en'))
         session.last_activity = datetime.fromisoformat(data["last_activity"])
         session.conversation_history = data["conversation_history"]
         session.last_message_id = data.get("last_message_id")
         session.is_new_session = False
         return session
 
+def generate_language_selection_message():
+    message = "Please select your preferred language:\n\n"
+    for code, name in SUPPORTED_LANGUAGES.items():
+        message += f"{code}: {name}\n"
+    return message
 
-def send_message_with_template(to_number, body_text, user_input, is_greeting=False):
+def translate_message(text, target_lang):
     try:
-        main_message = client.messages.create(
-            from_=TWILIO_WHATSAPP_NUMBER,
-            to=to_number,
-            body=body_text
-        )
-        time.sleep(1)
-        if not is_greeting and needs_rating(user_input):
-            template_message = client.messages.create(
-                from_=TWILIO_WHATSAPP_NUMBER,
-                to=to_number,
-                body="Was this response helpful?",
-                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
-            )
-            return template_message
-        return main_message
+        translation = translator.translate(text, dest=target_lang)
+        return translation.text
     except Exception as e:
-        logger.error(f"Error sending message: {str(e)}")
-        raise
-
-def get_greeting_message():
-    hour = datetime.now().hour
-    if 5 <= hour < 12:
-        return "Good morning! 🌅"
-    elif 12 <= hour < 17:
-        return "Good afternoon! 🌞"
-    return "Good evening! 🌙"
-
-def create_welcome_message():
-    greeting = get_greeting_message()
-    return (
-        f"{greeting} Welcome to AI Fact Checker! 🤖✨\n\n"
-        "I'm here to help you verify information and check facts. "
-        "Feel free to ask me any questions or share statements you'd like to fact-check.\n\n"
-        "To get started, simply type your question or statement or send a voice message! 📝🎤"
-    )
-    
-def process_voice_message(media_url):
-    try:
-        # Create a temporary directory for audio processing
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Download the audio file
-            audio_path = os.path.join(temp_dir, "voice.ogg")
-            wav_path = os.path.join(temp_dir, "voice.wav")
-            
-            # Download the audio file from Twilio
-            urllib.request.urlretrieve(media_url, audio_path)
-            
-            # Convert OGG to WAV using pydub
-            audio = AudioSegment.from_ogg(audio_path)
-            audio.export(wav_path, format="wav")
-            
-            # Initialize speech recognizer
-            recognizer = sr.Recognizer()
-            
-            # Load the audio file and convert to text
-            with sr.AudioFile(wav_path) as source:
-                audio_data = recognizer.record(source)
-                text = recognizer.recognize_google(audio_data)
-                return text
-                
-    except Exception as e:
-        logger.error(f"Error processing voice message: {e}")
-        return None
-
-def needs_rating(response_text):
-    # Responses that don't need rating
-    casual_patterns = [
-        "thank you", "thanks", "you're welcome", "noted",
-        "got it", "understood", "👍", "🙏", "nice","bravo","amazing","impressive",
-        "sorry", "please", "hi", "hello", "hey", "good morning", "good afternoon", 
-        "good evening", "thanks", "thank you", "bye", "goodbye", "cool","yeah","yah","alright",
-        "oh","oops","ok"
-    ]
-    
-    text = response_text.lower().strip()
-    
-    # Check conditions
-    is_short = len(text.split()) < 10
-    is_casual = any(pattern in text for pattern in casual_patterns)
-    is_error = "error" in text or "an error occurred" in text
-    has_emoji_ending = text.endswith(('!', '👋', '🙂', '😊'))
-    
-    return not (is_short and (is_casual or has_emoji_ending or is_error))
+        logger.error(f"Translation error: {e}")
+        return text
 
 def get_chat_session(sender_number):
     session_key = f"chat_session:{sender_number}"
@@ -168,55 +147,88 @@ def get_chat_session(sender_number):
         logger.error(f"Error getting chat session: {e}")
         return ChatSession(sender_number)
 
-def handle_incoming_message(sender_number, chat_session, message_type="text", content=None):
+def save_chat_session(session):
     try:
-        if message_type == "voice":
-            # Process voice message
-            transcribed_text = process_voice_message(content)
-            if not transcribed_text:
-                return jsonify({
-                    "status": "error",
-                    "message": "Could not process voice message. Please try again."
-                }), 400
-            
-            # Send confirmation of voice message receipt
-            client.messages.create(
-                from_=TWILIO_WHATSAPP_NUMBER,
-                to=sender_number,
-                body=f"Voice message received and transcribed:\n\n\"{transcribed_text}\"\n\nProcessing your request..."
-            )
-            
-            incoming_message = transcribed_text
-        else:
-            incoming_message = content
+        session_key = f"chat_session:{session.sender_number}"
+        session_data = json.dumps(session.to_dict())
+        redis_client.setex(session_key, timedelta(hours=24), session_data)
+    except Exception as e:
+        logger.error(f"Error saving chat session: {e}")
 
+def send_message_with_template(to_number, body_text, user_input, user_language='en', is_greeting=False):
+    try:
+        # Translate message if needed
+        if user_language != 'en':
+            body_text = translate_message(body_text, user_language)
+        
+        main_message = client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=to_number,
+            body=body_text
+        )
+        time.sleep(1)
+        return main_message
+    except Exception as e:
+        logger.error(f"Error sending message: {str(e)}")
+        raise
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_reply():
+    try:
+        incoming_message = request.form.get("Body", "").strip().lower()
+        sender_number = request.form.get("From")
+        
+        # Retrieve or create chat session
+        chat_session = get_chat_session(sender_number)
+        
+        # Language selection logic for new users
         if chat_session.is_new_session:
-            welcome_message = send_message_with_template(
-                sender_number,
-                create_welcome_message(),
-                incoming_message,
-                is_greeting=True
-            )
-            chat_session.conversation_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "message": create_welcome_message(),
-                "type": "outgoing",
-                "message_id": welcome_message.sid
-            })
+            # If the incoming message is a language code
+            if incoming_message in SUPPORTED_LANGUAGES:
+                # Set the language for the session
+                chat_session.language = incoming_message
+                chat_session.is_new_session = False
+                
+                # Send welcome message in selected language
+                welcome_message = send_message_with_template(
+                    sender_number,
+                    WELCOME_MESSAGES.get(chat_session.language, WELCOME_MESSAGES['en']),
+                    incoming_message,
+                    chat_session.language,
+                    is_greeting=True
+                )
+                
+                chat_session.conversation_history.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "message": WELCOME_MESSAGES.get(chat_session.language, WELCOME_MESSAGES['en']),
+                    "type": "outgoing",
+                    "message_id": welcome_message.sid
+                })
+                
+                save_chat_session(chat_session)
+                return jsonify({"status": "success", "message_sid": welcome_message.sid})
+            else:
+                # Prompt for language selection if not a valid language code
+                language_message = send_message_with_template(
+                    sender_number,
+                    generate_language_selection_message(),
+                    incoming_message
+                )
+                return jsonify({"status": "language_selection", "message_sid": language_message.sid})
         
-        chat_session.conversation_history.append({
-            "timestamp": datetime.now().isoformat(),
-            "message": incoming_message,
-            "type": "incoming",
-            "message_type": message_type
-        })
-        
-        api_response = call_external_api(incoming_message, chat_session)
+        # Regular message handling with translation support
+        api_response = call_external_api(incoming_message)
         response_text = api_response.get("message", "I am unable to provide response now, please try your query again.")
         
-        message = send_message_with_template(sender_number, response_text, incoming_message)
-        chat_session.last_message_id = message.sid
+        # Send the response in user's preferred language
+        message = send_message_with_template(
+            sender_number, 
+            response_text, 
+            incoming_message,
+            chat_session.language
+        )
         
+        chat_session.last_message_id = message.sid
         chat_session.conversation_history.append({
             "timestamp": datetime.now().isoformat(),
             "message": response_text,
@@ -230,37 +242,19 @@ def handle_incoming_message(sender_number, chat_session, message_type="text", co
         return jsonify({"status": "success", "message_sid": message.sid})
     
     except Exception as e:
-        logger.error(f"Error handling incoming message: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route("/whatsapp", methods=["POST"])
-def whatsapp_reply():
-    try:
-        sender_number = request.form.get("From")
-        chat_session = get_chat_session(sender_number)
-        
-        # Check for button feedback first
-        button_text = request.form.get("ButtonText")
-        if button_text:
-            is_feedback, message_sid = handle_button_response(button_text, chat_session, sender_number)
-            if is_feedback:
-                return jsonify({"status": "success", "message_sid": message_sid})
-        
-        # Check for voice message
-        num_media = int(request.form.get("NumMedia", 0))
-        if num_media > 0:
-            media_type = request.form.get("MediaContentType0", "")
-            if media_type.startswith("audio/"):
-                media_url = request.form.get("MediaUrl0")
-                return handle_incoming_message(sender_number, chat_session, "voice", media_url)
-        
-        # Handle text message
-        incoming_message = request.form.get("Body", "").strip()
-        return handle_incoming_message(sender_number, chat_session, "text", incoming_message)
-    
-    except Exception as e:
         logger.error(f"Error in whatsapp_reply: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+def call_external_api(user_query):
+    try:
+        payload = {"user_input": user_query}
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=600)
+        response.raise_for_status()
+        data = response.json()
+        return {"message": data.get("result", "Unexpected API response format.")}
+    except Exception as e:
+        logger.error(f"Error calling external API: {e}")
+        return {"message": f"An error occurred: {e}", "status": "error"}
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
