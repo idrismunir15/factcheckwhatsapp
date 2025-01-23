@@ -165,7 +165,7 @@ def handle_button_response(button_text, chat_session, sender_number):
                 message = client.messages.create(
                     from_=TWILIO_WHATSAPP_NUMBER,
                     to=sender_number,
-                    body="Thank you for your feedback! 🙏"
+                    body="Thank you for your feedback! 🙏.\n Would you like to verify another claim?"
                 )
                 return True, message.sid
         return False, None
