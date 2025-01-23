@@ -162,22 +162,6 @@ def save_chat_session(session):
     except Exception as e:
         logger.error(f"Error saving chat session: {e}")
 
-def send_message_with_template(to_number, body_text, user_input, user_language='en', is_greeting=False):
-    try:
-        # Translate message if needed
-        if user_language != 'en':
-            body_text = translate_message(body_text, user_language)
-        
-        main_message = client.messages.create(
-            from_=TWILIO_WHATSAPP_NUMBER,
-            to=to_number,
-            body=body_text
-        )
-        time.sleep(1)
-        return main_message
-    except Exception as e:
-        logger.error(f"Error sending message: {str(e)}")
-        raise
 
 def send_message_with_template(to_number, body_text, user_input, user_language='en', is_greeting=False):
     try:
@@ -204,6 +188,35 @@ def send_message_with_template(to_number, body_text, user_input, user_language='
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
         raise
+
+def handle_button_response(button_text, chat_session, sender_number):
+    try:
+        if button_text in ["Pleased", "Not Pleased"]:
+            feedback_type = "positive" if button_text == "Pleased" else "negative"
+            if chat_session.last_message_id:
+                store_feedback(chat_session.last_message_id, feedback_type, sender_number)
+                message = client.messages.create(
+                    from_=TWILIO_WHATSAPP_NUMBER,
+                    to=sender_number,
+                    body="Thank you for your feedback! 🙏.\n Would you like to verify another claim?"
+                )
+                return True, message.sid
+        return False, None
+    except Exception as e:
+        logger.error(f"Error handling button response: {e}")
+        return False, None
+        
+def call_external_api(user_query):
+    try:
+        payload = {"user_input": user_query}
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=600)
+        response.raise_for_status()
+        data = response.json()
+        return {"message": data.get("result", "Unexpected API response format.")}
+    except Exception as e:
+        logger.error(f"Error calling external API: {e}")
+        return {"message": f"An error occurred: {e}", "status": "error"}
+        
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
@@ -212,7 +225,13 @@ def whatsapp_reply():
         
         # Retrieve or create chat session
         chat_session = get_chat_session(sender_number)
-        
+
+        button_text = request.form.get("ButtonText")
+        if button_text:
+            is_feedback, message_sid = handle_button_response(button_text, chat_session, sender_number)
+            if is_feedback:
+                return jsonify({"status": "success", "message_sid": message_sid})
+                
         # Language selection logic for new users
         if chat_session.is_new_session:
             # If the incoming message is a language code
@@ -277,16 +296,7 @@ def whatsapp_reply():
         logger.error(f"Error in whatsapp_reply: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-def call_external_api(user_query):
-    try:
-        payload = {"user_input": user_query}
-        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=600)
-        response.raise_for_status()
-        data = response.json()
-        return {"message": data.get("result", "Unexpected API response format.")}
-    except Exception as e:
-        logger.error(f"Error calling external API: {e}")
-        return {"message": f"An error occurred: {e}", "status": "error"}
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
