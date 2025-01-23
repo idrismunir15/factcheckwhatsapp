@@ -123,6 +123,26 @@ class ChatSession:
         session.is_new_session = False
         return session
 
+def needs_rating(response_text):
+    # Responses that don't need rating
+    casual_patterns = [
+        "thank you", "thanks", "you're welcome", "noted",
+        "got it", "understood", "👍", "🙏", "nice","bravo","amazing","impressive",
+        "sorry", "please", "hi", "hello", "hey", "good morning", "good afternoon", 
+        "good evening", "thanks", "thank you", "bye", "goodbye", "cool","yeah","yah","alright",
+        "oh","oops","ok"
+    ]
+    
+    text = response_text.lower().strip()
+    
+    # Check conditions
+    is_short = len(text.split()) < 10
+    is_casual = any(pattern in text for pattern in casual_patterns)
+    is_error = "error" in text or "an error occurred" in text
+    has_emoji_ending = text.endswith(('!', '👋', '🙂', '😊'))
+    
+    return not (is_short and (is_casual or has_emoji_ending or is_error))
+    
 def generate_language_selection_message():
     message = "Please select your preferred language:\n\n"
     for code, name in SUPPORTED_LANGUAGES.items():
