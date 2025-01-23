@@ -61,7 +61,7 @@ WELCOME_MESSAGES = {
         "Don farawa, shigar da tambayarka ko ma'anarka! 📝"
     ),
     'yo': (
-        "Kaabo si Olupese Ibankisaye Alailai! 🤖✨\n\n"
+        "Kaabo si AI Fact Checker! 🤖✨\n\n"
         "Mo wa nibi lati fẹ̀ṣẹ̀ alaye ati ṣe ayẹwo awọn ọrọ otitọ. "
         "Ma bẹ̀rẹ̀ bi ohun ti o ba fẹ̀ tabi ki o rọ̀ ọrọ ti o fẹ́ gbọdọ ṣe ayẹwo.\n\n"
         "Lati bẹ̀rẹ̀, ṣe zabẹ ẹ̀bẹ̀ tabi ọ̀rọ̀ rẹ! 📝"
@@ -179,6 +179,31 @@ def send_message_with_template(to_number, body_text, user_input, user_language='
         logger.error(f"Error sending message: {str(e)}")
         raise
 
+def send_message_with_template(to_number, body_text, user_input, user_language='en', is_greeting=False):
+    try:
+        # Translate message if needed
+        if user_language != 'en':
+            body_text = translate_message(body_text, user_language)
+            
+        main_message = client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=to_number,
+            body=body_text
+        )
+        time.sleep(1)
+        if not is_greeting and needs_rating(user_input):
+            body_text=translate_message("Was this response helpful?", user_language)
+            template_message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=to_number,
+                body=body_text
+                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+            )
+            return template_message
+        return main_message
+    except Exception as e:
+        logger.error(f"Error sending message: {str(e)}")
+        raise
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
