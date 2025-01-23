@@ -180,7 +180,7 @@ def send_message_with_template(to_number, body_text, user_input, user_language='
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
-                body=body_text
+                body=body_text,
                 content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
             return template_message
