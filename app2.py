@@ -39,10 +39,11 @@ client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 # Multilingual Support
 SUPPORTED_LANGUAGES = {
     'en': 'English',
-    'es': 'Spanish',
+    'ha': 'Hausa',
+    'yo': 'Yoruba',
+    'ig': 'Igbo',
     'fr': 'French',
-    'de': 'German',
-    'zh-cn': 'Chinese (Simplified)',
+    'sw': 'Swahili',
     'ar': 'Arabic'
 }
 
@@ -53,29 +54,35 @@ WELCOME_MESSAGES = {
         "Feel free to ask me any questions or share statements you'd like to fact-check.\n\n"
         "To get started, simply type your question or statement! 📝"
     ),
-    'es': (
-        "¡Bienvenido a Verificador de Hechos de IA! 🤖✨\n\n"
-        "Estoy aquí para ayudarte a verificar información y comprobar datos. "
-        "Siéntete libre de hacerme cualquier pregunta o compartir declaraciones que quieras verificar.\n\n"
-        "¡Para comenzar, simplemente escribe tu pregunta o declaración! 📝"
+    'ha': (
+        "Barka da zuwa Babban Mai Tabbatar da Bayanan Sauti! 🤖✨\n\n"
+        "Na ke nan don tabbatar da bayanan da za ka tambayar su. "
+        "Ka yi hakuri ka tambaya ni wadda ke da sa'a ko ka ayyana wani nama da kake son ka tabbatar da shi.\n\n"
+        "Don farawa, shigar da tambayarka ko ma'anarka! 📝"
+    ),
+    'yo': (
+        "Kaabo si Olupese Ibankisaye Alailai! 🤖✨\n\n"
+        "Mo wa nibi lati fẹ̀ṣẹ̀ alaye ati ṣe ayẹwo awọn ọrọ otitọ. "
+        "Ma bẹ̀rẹ̀ bi ohun ti o ba fẹ̀ tabi ki o rọ̀ ọrọ ti o fẹ́ gbọdọ ṣe ayẹwo.\n\n"
+        "Lati bẹ̀rẹ̀, ṣe zabẹ ẹ̀bẹ̀ tabi ọ̀rọ̀ rẹ! 📝"
+    ),
+    'ig': (
+        "Nnọọ na Onye Nchọpụta Eziokwu nke AI! 🤖✨\n\n"
+        "Adị m ebe a iji nyochaa na gbochie ozi. "
+        "Nwee ebete itinyere ajụjụ gị ma ọ bụ okwu ị chọrọ ịgbochi.\n\n"
+        "Iji malite, detuo ajụjụ gị ma ọ bụ okwu! 📝"
     ),
     'fr': (
         "Bienvenue sur le Vérificateur de Faits par IA ! 🤖✨\n\n"
-        "Je suis là pour vous aider à vérifier les informations et à fact-checker. "
+        "Je suis là pour vous aider à vérifier les informations et fact-checker. "
         "N'hésitez pas à me poser des questions ou à partager des déclarations que vous souhaitez vérifier.\n\n"
         "Pour commencer, tapez simplement votre question ou déclaration ! 📝"
     ),
-    'de': (
-        "Willkommen beim KI-Faktenprüfer! 🤖✨\n\n"
-        "Ich bin hier, um Ihnen bei der Überprüfung von Informationen zu helfen. "
-        "Zögern Sie nicht, mir Fragen zu stellen oder Aussagen zur Überprüfung vorzulegen.\n\n"
-        "Um zu beginnen, stellen Sie einfach Ihre Frage oder Aussage! 📝"
-    ),
-    'zh-cn': (
-        "欢迎使用AI事实核查器！🤖✨\n\n"
-        "我在这里帮助您验证信息和检查事实。"
-        "随时可以向我提出问题或分享您想核实的陈述。\n\n"
-        "开始吧，直接输入您的问题或陈述！📝"
+    'sw': (
+        "Karibu kwenye Kiangizi cha Ukweli cha AI! 🤖✨\n\n"
+        "Niko hapa kusaidia wewe kuhakiki taarifa na kuchunguza ukweli. "
+        "Usisite kuuliza maswali yoyote au kushiriki matangazo unayotaka kuyahakiki.\n\n"
+        "Ili kuanza, andika swali lako au kauli! 📝"
     ),
     'ar': (
         "مرحبًا بك في مدقق الحقائق بالذكاء الاصطناعي! 🤖✨\n\n"
