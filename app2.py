@@ -178,7 +178,7 @@ def save_chat_session(session):
     try:
         session_key = f"chat_session:{session.sender_number}"
         session_data = json.dumps(session.to_dict())
-        redis_client.setex(session_key, timedelta(hours=24), session_data)
+        redis_client.setex(session_key, timedelta(hours=2), session_data)
     except Exception as e:
         logger.error(f"Error saving chat session: {e}")
 
