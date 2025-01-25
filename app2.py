@@ -251,7 +251,7 @@ def whatsapp_reply():
                 processing_message = client.messages.create(
                     from_=TWILIO_WHATSAPP_NUMBER,
                     to=sender_number,
-                    body="Processing your voice note... ⏳"
+                    body=translate_text("Processing your voice note... ⏳",chat_session.language)
                 )
 
                 #Transcribed Text
@@ -259,9 +259,9 @@ def whatsapp_reply():
                 if transcribed_text:
                     incoming_message = transcribed_text
                 else:
-                    incoming_message = "Sorry, I couldn't process the voice note."
+                    incoming_message = translate_text("Sorry, I couldn't process the voice note.", chat_session.language)
             else:
-                incoming_message = "Unsupported media type. Please send a voice note."
+                incoming_message = translate_text("Unsupported media type. Please send a voice note.", chat_session.language)
         else:
             incoming_message = request.form.get("Body", "").strip()
         
@@ -297,11 +297,11 @@ def whatsapp_reply():
         })
 
         # Send a processing message for text inputs
-        if num_media == 0:
+        if num_media == 0 and needs_rating(incoming_message):
             processing_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=sender_number,
-                body="Processing your request... ⏳"
+                body=translate_text("Processing your request. ⏳",chat_session.language)
             )
             
         api_response = call_external_api(incoming_message, chat_session)
@@ -325,6 +325,12 @@ def whatsapp_reply():
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
         logger.error(f"Error in whatsapp_reply: {str(e)}")
+        error_message = translate_text("An error occurred. Please try again later.", chat_session.language)
+        client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=sender_number,
+            body=error_message
+        )
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
