@@ -12,7 +12,9 @@ import logging
 import time
 from googletrans import Translator
 from pydub import AudioSegment  # For processing audio files
-import speech_recognition as sr  # For transcribing voice messages
+#import speech_recognition as sr  # For transcribing voice messages
+import openai
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,6 +37,8 @@ EXTERNAL_API_URL = os.getenv("EXTERNAL_API")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 translator = Translator()
@@ -171,7 +175,7 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
                 body=translate_text("Was this response helpful?", language),
                 content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
-            return template_message
+            return translate_text(template_message,chat_session.language)
         return main_message
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
@@ -220,15 +224,23 @@ def transcribe_voice_message(audio_url):
         audio.export("temp_audio.wav", format="wav")
         
         # Transcribe the audio using speech_recognition
-        with sr.AudioFile("temp_audio.wav") as source:
-            audio_data = recognizer.record(source)
-            text = recognizer.recognize_google(audio_data)
+        #with sr.AudioFile("temp_audio.wav") as source:
+        #    audio_data = recognizer.record(source)
+        #    text = recognizer.recognize_google(audio_data)
+
+        # Step 3: Transcribe the audio using Whisper API
+        with open("temp_audio.mp3", "rb") as audio_file:
+            transcription = openai.Audio.transcribe(
+                file=audio_file,
+                model="whisper-1",
+                response_format="text"
+            )
         
         # Clean up temporary files
         os.remove("temp_audio.ogg")
         os.remove("temp_audio.wav")
         
-        return text
+        return transcription
     except Exception as e:
         logger.error(f"Error transcribing voice message: {e}")
         return None
