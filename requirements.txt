@@ -5,6 +5,6 @@ requests
 pyshorteners
 python-dotenv
 redis
-SpeechRecognition
-pydub
-googletrans==3.1.0a0
+pydub 
+speechrecognition 
+googletrans==4.0.0-rc1
