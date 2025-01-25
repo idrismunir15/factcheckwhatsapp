@@ -105,7 +105,7 @@ def get_chat_session(sender_number):
             session_dict = json.loads(session_data.decode('utf-8'))
             session = ChatSession.from_dict(session_dict)
             last_activity = datetime.fromisoformat(session_dict["last_activity"])
-            if datetime.now() - last_activity > timedelta(hours=24):
+            if datetime.now() - last_activity > timedelta(hours=2):
                 session = ChatSession(sender_number)
         else:
             session = ChatSession(sender_number)
