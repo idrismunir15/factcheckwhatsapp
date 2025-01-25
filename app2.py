@@ -247,6 +247,14 @@ def whatsapp_reply():
             
             # Check if the media is a voice note (audio/ogg)
             if media_type == "audio/ogg":
+                # Send a processing message
+                processing_message = client.messages.create(
+                    from_=TWILIO_WHATSAPP_NUMBER,
+                    to=sender_number,
+                    body="Processing your voice note... ⏳"
+                )
+
+                #Transcribed Text
                 transcribed_text = transcribe_voice_message(media_url)
                 if transcribed_text:
                     incoming_message = transcribed_text
@@ -287,7 +295,15 @@ def whatsapp_reply():
             "message": incoming_message,
             "type": "incoming"
         })
-        
+
+        # Send a processing message for text inputs
+        if num_media == 0:
+            processing_message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=sender_number,
+                body="Processing your request... ⏳"
+            )
+            
         api_response = call_external_api(incoming_message, chat_session)
         response_text = api_response.get("message", "I am unable to provide a response now. Please try your query again.")
 
