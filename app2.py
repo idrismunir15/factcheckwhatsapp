@@ -239,17 +239,21 @@ def whatsapp_reply():
         sender_number = request.form.get("From")
         chat_session = get_chat_session(sender_number)
         
-        # Check if the message is a voice message
-        if request.form.get("NumMedia") != "0":
+        # Check if the message is a voice note
+        num_media = int(request.form.get("NumMedia", 0))
+        if num_media > 0:
             media_url = request.form.get("MediaUrl0")
-            if media_url and media_url.endswith(".ogg"):
+            media_type = request.form.get("MediaContentType0", "")
+            
+            # Check if the media is a voice note (audio/ogg)
+            if media_type == "audio/ogg":
                 transcribed_text = transcribe_voice_message(media_url)
                 if transcribed_text:
                     incoming_message = transcribed_text
                 else:
-                    incoming_message = "Sorry, I couldn't process the voice message."
+                    incoming_message = "Sorry, I couldn't process the voice note."
             else:
-                incoming_message = "Unsupported media type."
+                incoming_message = "Unsupported media type. Please send a voice note."
         else:
             incoming_message = request.form.get("Body", "").strip()
         
@@ -285,7 +289,7 @@ def whatsapp_reply():
         })
         
         api_response = call_external_api(incoming_message, chat_session)
-        response_text = api_response.get("message", "I am unable to provide response now, please try your query again.")
+        response_text = api_response.get("message", "I am unable to provide a response now. Please try your query again.")
 
         print(response_text)
         
