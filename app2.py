@@ -42,7 +42,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 translator = Translator()
-recognizer = sr.Recognizer()  # Initialize the speech recognizer
+#recognizer = sr.Recognizer()  # Initialize the speech recognizer
 
 class ChatSession:
     def __init__(self, sender_number):
