@@ -209,7 +209,7 @@ def call_external_api(user_query, chat_session):
         logger.error(f"Error calling external API: {e}")
         return {"message": f"An error occurred: {e}", "status": "error"}
 
-def transcribe_voice_message(audio_url):
+def transcribe_voice_message(audio_url,chat_session):
     try:
         # Download the audio file
         response = requests.get(audio_url)
