@@ -235,6 +235,7 @@ def transcribe_voice_message(audio_url,chat_session):
                 model="whisper-1",
                 response_format="verbose_json"
             )
+        print(transcription)
 
         chat_session.language = transcription.get("language")
 
