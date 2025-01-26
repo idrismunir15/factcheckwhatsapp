@@ -269,7 +269,7 @@ def whatsapp_reply():
                 )
 
                 #Transcribed Text
-                transcribed_text = transcribe_voice_message(media_url)
+                transcribed_text = transcribe_voice_message(media_url,chat_session)
                 if transcribed_text:
                     incoming_message = transcribed_text
                 else:
