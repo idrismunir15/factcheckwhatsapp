@@ -235,7 +235,9 @@ def transcribe_voice_message(audio_url):
                 model="whisper-1",
                 response_format="text"
             )
-        
+
+        chat_session.language = transcription.get("language")
+
         # Clean up temporary files
         os.remove("temp_audio.ogg")
         os.remove("temp_audio.wav")
