@@ -233,7 +233,7 @@ def transcribe_voice_message(audio_url):
             transcription = openai.Audio.transcribe(
                 file=audio_file,
                 model="whisper-1",
-                response_format="text"
+                response_format="verbose_json"
             )
 
         chat_session.language = transcription.get("language")
