@@ -233,11 +233,12 @@ def transcribe_voice_message(audio_url,chat_session):
             transcription = openai.Audio.transcribe(
                 file=audio_file,
                 model="whisper-1",
-                response_format="verbose_json"
+                response_format="text"
             )
         print(transcription)
 
-        chat_session.language = transcription.get("language")
+        detected_language = translator.detect(transcription).lang
+        chat_session.language = detected_language
 
         # Clean up temporary files
         os.remove("temp_audio.ogg")
