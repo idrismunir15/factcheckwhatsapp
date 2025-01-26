@@ -229,7 +229,7 @@ def transcribe_voice_message(audio_url):
         #    text = recognizer.recognize_google(audio_data)
 
         # Step 3: Transcribe the audio using Whisper API
-        with open("temp_audio.mp3", "rb") as audio_file:
+        with open("temp_audio.wav", "rb") as audio_file:
             transcription = openai.Audio.transcribe(
                 file=audio_file,
                 model="whisper-1",
