@@ -181,7 +181,7 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
         logger.error(f"Error sending message: {str(e)}")
         raise
 
-def handle_button_response(button_text, chat_session, sender_number):
+def handle_button_response(button_text, chat_session, previous, sender_number):
     try:
         if button_text in ["Pleased", "Not Pleased"]:
             feedback_type = "positive" if button_text == "Pleased" else "negative"
@@ -190,7 +190,7 @@ def handle_button_response(button_text, chat_session, sender_number):
                 message = client.messages.create(
                     from_=TWILIO_WHATSAPP_NUMBER,
                     to=sender_number,
-                    body=translate_text("Thank you for your feedback! 🙏.\n Would you like to verify another claim?", chat_session.language)
+                    body=translate_text("Thank you for your feedback! 🙏.\n Would you like to verify another claim?", previous)
                 )
                 return True, message.sid
         return False, None
@@ -284,10 +284,10 @@ def whatsapp_reply():
         # Detect language from the incoming message
         detected_language = translator.detect(incoming_message).lang
         chat_session.language = detected_language
-        
+        previous=chat_session.language
         button_text = request.form.get("ButtonText")
         if button_text:
-            is_feedback, message_sid = handle_button_response(button_text, chat_session, sender_number)
+            is_feedback, message_sid = handle_button_response(button_text, chat_session, previous, sender_number)
             if is_feedback:
                 return jsonify({"status": "success", "message_sid": message_sid})
         
