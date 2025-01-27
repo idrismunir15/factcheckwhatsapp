@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 import requests
+from requests.exceptions import Timeout, RequestException
 import os
 import json
 from dotenv import load_dotenv
@@ -195,6 +196,7 @@ def handle_button_response(user_response, chat_session, previous, sender_number)
                 )
                 return True, message.sid
         return False, None
+        
     except Exception as e:
         logger.error(f"Error handling button response: {e}")
         return False, None
