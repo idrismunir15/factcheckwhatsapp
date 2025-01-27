@@ -203,7 +203,7 @@ def handle_button_response(user_response, chat_session, previous, sender_number)
 def call_external_api(user_query, chat_session):
     try:
         payload = {"user_input": user_query}
-        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=20)
+        response = requests.post(EXTERNAL_API_URL, json=payload, timeout=600)
         response.raise_for_status()
         data = response.json()
         return {"message": data.get("result", "Unexpected API response format.")}
