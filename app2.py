@@ -172,8 +172,8 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
-                body=translate_text("Was this response helpful?", language),
-                content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+                body=translate_text("Was this response helpful? Reply with 👍 for Yes or 👎 for No.", language)
+                #content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
             return translate_text(template_message,chat_session.language)
         return main_message
@@ -183,7 +183,8 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
 
 def handle_button_response(button_text, chat_session, previous, sender_number):
     try:
-        if button_text in ["Pleased", "Not Pleased"]:
+        if user_response in ["👍", "👎"]:
+        #if button_text in ["Pleased", "Not Pleased"]:
             feedback_type = "positive" if button_text == "Pleased" else "negative"
             if chat_session.last_message_id:
                 store_feedback(chat_session.last_message_id, feedback_type, sender_number)
@@ -285,9 +286,11 @@ def whatsapp_reply():
         detected_language = translator.detect(incoming_message).lang
         chat_session.language = detected_language
         previous=chat_session.language
-        button_text = request.form.get("ButtonText")
-        if button_text:
-            is_feedback, message_sid = handle_button_response(button_text, chat_session, previous, sender_number)
+        #button_text = request.form.get("ButtonText")
+        # Handle feedback (thumbs up/down)
+        if incoming_message in ["👍", "👎"]:
+        #if button_text:
+            is_feedback, message_sid = handle_button_response(incoming_message, chat_session, previous, sender_number)
             if is_feedback:
                 return jsonify({"status": "success", "message_sid": message_sid})
         
