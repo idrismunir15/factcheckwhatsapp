@@ -181,7 +181,7 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
         logger.error(f"Error sending message: {str(e)}")
         raise
 
-def handle_button_response(button_text, chat_session, previous, sender_number):
+def handle_button_response(user_response, chat_session, previous, sender_number):
     try:
         if user_response in ["👍", "👎"]:
         #if button_text in ["Pleased", "Not Pleased"]:
