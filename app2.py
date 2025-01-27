@@ -173,10 +173,9 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
-                body=translate_text("Was this response helpful? Reply with 👍 for Yes or 👎 for No.", language),
-                #content_sid=os.getenv("TWILIO_TEMPLATE_SID")
+                body=translate_text("Was this response helpful? Reply with 👍 for Yes or 👎 for No.", language)
             )
-            return translate_text(template_message,chat_session.language)
+            return translate_text(template_message,language)
         return main_message
     except Exception as e:
         logger.error(f"Error sending message: {str(e)}")
@@ -346,7 +345,6 @@ def whatsapp_reply():
         
         chat_session.last_activity = datetime.now()
         save_chat_session(chat_session)
-        
         return jsonify({"status": "success", "message_sid": message.sid})
     except Exception as e:
         logger.error(f"Error in whatsapp_reply: {str(e)}")
