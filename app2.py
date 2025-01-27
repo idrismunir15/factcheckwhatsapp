@@ -91,7 +91,7 @@ def needs_rating(response_text):
         "good evening", "thanks", "thank you", "bye", "goodbye", "cool","yeah","yah","alright",
         "oh","oops","ok","yes"
     ]
-    tim
+
     text = response_text.lower().strip()
     
     # Check conditions
