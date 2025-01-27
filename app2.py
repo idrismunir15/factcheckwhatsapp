@@ -185,7 +185,7 @@ def handle_button_response(button_text, chat_session, previous, sender_number):
     try:
         if user_response in ["👍", "👎"]:
         #if button_text in ["Pleased", "Not Pleased"]:
-            feedback_type = "positive" if button_text == "Pleased" else "negative"
+            feedback_type = "positive" if user_response == "👍" else "negative"
             if chat_session.last_message_id:
                 store_feedback(chat_session.last_message_id, feedback_type, sender_number)
                 message = client.messages.create(
