@@ -173,7 +173,7 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
             template_message = client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
                 to=to_number,
-                body=translate_text("Was this response helpful? Reply with 👍 for Yes or 👎 for No.", language)
+                body=translate_text("Was this response helpful? Reply with 👍 for Yes or 👎 for No.", language),
                 #content_sid=os.getenv("TWILIO_TEMPLATE_SID")
             )
             return translate_text(template_message,chat_session.language)
@@ -291,6 +291,7 @@ def whatsapp_reply():
         detected_language = translator.detect(incoming_message).lang
         chat_session.language = detected_language
         previous=chat_session.language
+        
         #button_text = request.form.get("ButtonText")
         # Handle feedback (thumbs up/down)
         if incoming_message in ["👍", "👎"]:
