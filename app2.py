@@ -137,7 +137,7 @@ def save_chat_session(session):
     except Exception as e:
         logger.error(f"Error saving chat session: {e}")
 
-def get_greeting_message(language="en",session):
+def get_greeting_message(language="en"):
     
     hour = datetime.now().hour
     if 5 <= hour < 12:
