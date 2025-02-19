@@ -150,7 +150,7 @@ def get_greeting_message(language="en"):
         greeting = translate_text("Good evening! 🌙", language)
     return greeting
 
-def create_welcome_message(language="en", sender_number):
+def create_welcome_message(sender_number, language="en"):
     greeting = get_greeting_message(language)
     
     # Get the user's WhatsApp profile name
@@ -324,14 +324,14 @@ def whatsapp_reply():
         if chat_session.is_new_session:
             welcome_message = send_message_with_template(
                 sender_number,
-                create_welcome_message(chat_session.language),
+                create_welcome_message(sender_number, chat_session.language),
                 incoming_message,
                 is_greeting=True,
                 language=chat_session.language
             )
             chat_session.conversation_history.append({
                 "timestamp": datetime.now().isoformat(),
-                "message": create_welcome_message(chat_session.language),
+                "message": create_welcome_message(sender_number, chat_session.language),
                 "type": "outgoing",
                 "message_id": welcome_message.sid
             })
