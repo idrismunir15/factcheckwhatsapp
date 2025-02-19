@@ -75,16 +75,26 @@ class ChatSession:
         return session
 
 def get_whatsapp_profile_name(sender_number):
-    try:
-        # Fetch the user's WhatsApp profile
-        profile = client.messaging.sessions(session_sid).participant_sessions(sender_number).fetch()
-        print(f"Profile name is {profile}")
+     try:
+        # Remove the 'whatsapp:' prefix if present
+        clean_number = sender_number.replace('whatsapp:', '')
         
-        # Return the profile name
-        return profile.friendly_name
+        # Fetch user's profile information using Twilio API
+        profile = client.messaging \
+            .services(os.getenv("TWILIO_SERVICE_SID")) \
+            .users(clean_number) \
+            .fetch()
+            
+        # Return the profile name if available
+        if profile and profile.profile_info:
+            return profile.profile_info.get('name')
+        return None
+        
     except Exception as e:
         logger.error(f"Error fetching WhatsApp profile name: {e}")
         return None
+
+
 
 def translate_text(text, dest_language):
     try:
@@ -155,6 +165,7 @@ def create_welcome_message(sender_number, language="en"):
     
     # Get the user's WhatsApp profile name
     profile_name = get_whatsapp_profile_name(sender_number)
+    name = f"{profile_name}!" if profile_name else "Friend!"
     
     welcome_text = translate_text(
         "Welcome to AI Fact Checker! 🤖✨\n\n"
@@ -163,7 +174,7 @@ def create_welcome_message(sender_number, language="en"):
         "To get started, simply type your question or statement! 📝",
         language
     )
-    return f"{greeting} {profile_name} \n {welcome_text}"
+    return f"{greeting} {name} \n {welcome_text}"
 
 def store_feedback(message_id, feedback_type, sender_number):
     try:
@@ -275,7 +286,6 @@ def transcribe_voice_message(audio_url,chat_session):
 def whatsapp_reply():
     try:
         sender_number = request.form.get("From")
-        print(f"Sender number is {sender_number}")
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
