@@ -75,7 +75,7 @@ class ChatSession:
         return session
 
 def get_whatsapp_profile_name(sender_number):
-     try:
+    try:
         # Remove the 'whatsapp:' prefix if present
         clean_number = sender_number.replace('whatsapp:', '')
         
@@ -89,7 +89,7 @@ def get_whatsapp_profile_name(sender_number):
         if profile and profile.profile_info:
             return profile.profile_info.get('name')
         return None
-        
+    
     except Exception as e:
         logger.error(f"Error fetching WhatsApp profile name: {e}")
         return None
