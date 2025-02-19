@@ -74,6 +74,16 @@ class ChatSession:
         session.language = data.get("language", "en")
         return session
 
+def get_whatsapp_profile_name(sender_number):
+    try:
+        # Fetch the user's WhatsApp profile
+        profile = client.messaging.sessions(session_sid).participant_sessions(sender_number).fetch()
+        # Return the profile name
+        return profile.friendly_name
+    except Exception as e:
+        logger.error(f"Error fetching WhatsApp profile name: {e}")
+        return None
+
 def translate_text(text, dest_language):
     try:
         translated = translator.translate(text, dest=dest_language)
@@ -127,7 +137,8 @@ def save_chat_session(session):
     except Exception as e:
         logger.error(f"Error saving chat session: {e}")
 
-def get_greeting_message(language="en"):
+def get_greeting_message(language="en",session):
+    
     hour = datetime.now().hour
     if 5 <= hour < 12:
         greeting = translate_text("Good morning! 🌅", language)
@@ -139,6 +150,10 @@ def get_greeting_message(language="en"):
 
 def create_welcome_message(language="en"):
     greeting = get_greeting_message(language)
+    
+    # Get the user's WhatsApp profile name
+    profile_name = get_whatsapp_profile_name(sender_number)
+    
     welcome_text = translate_text(
         "Welcome to AI Fact Checker! 🤖✨\n\n"
         "I'm here to help you verify information and check facts. "
@@ -146,7 +161,7 @@ def create_welcome_message(language="en"):
         "To get started, simply type your question or statement! 📝",
         language
     )
-    return f"{greeting} {welcome_text}"
+    return f"{greeting} {profile_name} {"\n"} {welcome_text}"
 
 def store_feedback(message_id, feedback_type, sender_number):
     try:
@@ -259,6 +274,9 @@ def whatsapp_reply():
     try:
         sender_number = request.form.get("From")
         chat_session = get_chat_session(sender_number)
+
+        # Get the user's WhatsApp profile name
+        # profile_name = get_whatsapp_profile_name(sender_number)
         
         # Check if the message is a voice note
         num_media = int(request.form.get("NumMedia", 0))
