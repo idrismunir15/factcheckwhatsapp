@@ -273,6 +273,7 @@ def transcribe_voice_message(audio_url,chat_session):
 def whatsapp_reply():
     try:
         sender_number = request.form.get("From")
+        print(f"Sender number is {sender_number}")
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
