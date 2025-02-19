@@ -161,7 +161,7 @@ def create_welcome_message(language="en"):
         "To get started, simply type your question or statement! 📝",
         language
     )
-    return f"{greeting} {profile_name} {"\n"} {welcome_text}"
+    return f"{greeting} {profile_name} "\n" {welcome_text}"
 
 def store_feedback(message_id, feedback_type, sender_number):
     try:
