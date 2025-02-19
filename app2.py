@@ -277,7 +277,8 @@ def whatsapp_reply():
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        # profile_name = get_whatsapp_profile_name(sender_number)
+        profile_name = get_whatsapp_profile_name(sender_number)
+        print(f"Profile Name is {profile_name}")
         
         # Check if the message is a voice note
         num_media = int(request.form.get("NumMedia", 0))
