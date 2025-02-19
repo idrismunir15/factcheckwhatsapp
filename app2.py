@@ -78,6 +78,8 @@ def get_whatsapp_profile_name(sender_number):
     try:
         # Fetch the user's WhatsApp profile
         profile = client.messaging.sessions(session_sid).participant_sessions(sender_number).fetch()
+        print(f"Profile name is {profile}")
+        
         # Return the profile name
         return profile.friendly_name
     except Exception as e:
@@ -148,7 +150,7 @@ def get_greeting_message(language="en"):
         greeting = translate_text("Good evening! 🌙", language)
     return greeting
 
-def create_welcome_message(language="en"):
+def create_welcome_message(language="en", sender_number):
     greeting = get_greeting_message(language)
     
     # Get the user's WhatsApp profile name
@@ -277,8 +279,8 @@ def whatsapp_reply():
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        profile_name = get_whatsapp_profile_name(sender_number)
-        print(f"Profile Name is {profile_name}")
+        #profile_name = get_whatsapp_profile_name(sender_number)
+        #print(f"Profile Name is {profile_name}")
         
         # Check if the message is a voice note
         num_media = int(request.form.get("NumMedia", 0))
