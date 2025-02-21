@@ -74,18 +74,6 @@ class ChatSession:
         session.language = data.get("language", "en")
         return session
 
-def get_whatsapp_profile_name(sender_number):
-    try:
-        # Fetch the user's WhatsApp profile
-        profile = client.messaging.sessions(session_sid).participant_sessions(sender_number).fetch()
-        print(profile)
-        
-        # Return the profile name
-        return profile.friendly_name
-    except Exception as e:
-        logger.error(f"Error fetching WhatsApp profile name: {e}")
-        return "User"
-
 
 def translate_text(text, dest_language):
     try:
@@ -151,12 +139,11 @@ def get_greeting_message(language="en"):
         greeting = translate_text("Good evening! 🌙", language)
     return greeting
 
-def create_welcome_message(sender_number, language="en"):
+def create_welcome_message(profile_name, language="en"):
     greeting = get_greeting_message(language)
     
     # Get the user's WhatsApp profile name
-    profile_name = get_whatsapp_profile_name(sender_number)
-    name = f"{profile_name}!" if profile_name else "Friend!"
+    name = f"{profile_name}!" if profile_name else "User!"
     
     welcome_text = translate_text(
         "Welcome to AI Fact Checker! 🤖✨\n\n"
@@ -281,7 +268,7 @@ def whatsapp_reply():
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        profile_name = get_whatsapp_profile_name(sender_number)
+        profile_name = request.for.get("ProfileName","User")
         
         
         # Check if the message is a voice note
@@ -326,14 +313,14 @@ def whatsapp_reply():
         if chat_session.is_new_session:
             welcome_message = send_message_with_template(
                 sender_number,
-                create_welcome_message(sender_number, chat_session.language),
+                create_welcome_message(profile_name, chat_session.language),
                 incoming_message,
                 is_greeting=True,
                 language=chat_session.language
             )
             chat_session.conversation_history.append({
                 "timestamp": datetime.now().isoformat(),
-                "message": create_welcome_message(sender_number, chat_session.language),
+                "message": create_welcome_message(profile_name, chat_session.language),
                 "type": "outgoing",
                 "message_id": welcome_message.sid
             })
