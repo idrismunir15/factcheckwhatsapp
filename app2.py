@@ -16,16 +16,13 @@ from pydub import AudioSegment  # For processing audio files
 #import speech_recognition as sr  # For transcribing voice messages
 import openai
 import re
-import celery
+from celery import Celery
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
 url = urlparse(os.environ.get("REDIS_URL"))
 redis_client = redis.Redis(
@@ -45,7 +42,18 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 translator = Translator()
-#recognizer = sr.Recognizer()  # Initialize the speech recognizer
+
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        broker=os.getenv("REDIS_URL"),
+        backend=os.getenv("REDIS_URL")
+    )
+    celery.conf.update(app.config)
+    return celery
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
 class ChatSession:
     def __init__(self, sender_number):
