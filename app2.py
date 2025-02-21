@@ -233,7 +233,6 @@ def send_message_with_template(to_number, body_text, user_input, is_greeting=Fal
 def handle_button_response(user_response, chat_session, previous, sender_number):
     try:
         if user_response in ["👍", "👎"]:
-        #if button_text in ["Pleased", "Not Pleased"]:
             feedback_type = "positive" if user_response == "👍" else "negative"
             if chat_session.last_message_id:
                 store_feedback(chat_session.last_message_id, feedback_type, sender_number)
@@ -339,13 +338,15 @@ def whatsapp_reply():
                 incoming_message = translate_text("Unsupported media type. Please send a voice note.", chat_session.language)
         else:
             incoming_message = request.form.get("Body", "").strip()
+
+        #Previous Language
+        previous=chat_session.language
         
         # Detect language from the incoming message
         detected_language = translator.detect(incoming_message).lang
         chat_session.language = detected_language
-        previous=chat_session.language
         
-        #button_text = request.form.get("ButtonText")
+        
         # Handle feedback (thumbs up/down)
         if incoming_message in ["👍", "👎"]:
         #if button_text:
