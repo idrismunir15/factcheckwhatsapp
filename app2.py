@@ -77,8 +77,22 @@ class ChatSession:
 
 def translate_text(text, dest_language):
     try:
-        translated = translator.translate(text, dest=dest_language)
-        return translated.text
+        # Regular expression to find URLs in the text
+        url_pattern = re.compile(r'(https?://\S+)')
+        urls = re.findall(url_pattern, text)
+        
+        # Replace URLs with placeholders
+        for i, url in enumerate(urls):
+            text = text.replace(url, f'__URL{i}__')
+        
+        # Translate the text without URLs
+        translated = translator.translate(text, dest=dest_language).text
+        
+        # Replace placeholders with original URLs
+        for i, url in enumerate(urls):
+            translated = translated.replace(f'__URL{i}__', url)
+        
+        return translated
     except Exception as e:
         logger.error(f"Error translating text: {e}")
         return text  # Return original text if translation fails
