@@ -15,6 +15,7 @@ from googletrans import Translator
 from pydub import AudioSegment  # For processing audio files
 #import speech_recognition as sr  # For transcribing voice messages
 import openai
+import re
 
 
 logging.basicConfig(level=logging.INFO)
