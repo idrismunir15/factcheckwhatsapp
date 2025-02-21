@@ -78,25 +78,52 @@ class ChatSession:
 
 def translate_text(text, dest_language):
     try:
-        # Regular expression to find URLs in the text
-        url_pattern = re.compile(r'(https?://\S+)')
-        urls = re.findall(url_pattern, text)
+        if not text or not isinstance(text, str):
+            return text
+
+        # More comprehensive URL pattern
+        url_pattern = re.compile(
+            r'(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|'
+            r'www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|'
+            r'https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|'
+            r'www\.[a-zA-Z0-9]+\.[^\s]{2,})'
+        )
+
+        # Store URLs and their unique placeholders
+        urls = url_pattern.findall(text)
+        placeholders = {}
         
-        # Replace URLs with placeholders
+        # Create unique placeholders for each URL
         for i, url in enumerate(urls):
-            text = text.replace(url, f'__URL{i}__')
-        
-        # Translate the text without URLs
-        print(text)
-        translated = translator.translate(text, dest=dest_language).text
-        
-        # Replace placeholders with original URLs
-        for i, url in enumerate(urls):
-            translated = translated.replace(f'__URL{i}__', url)
-        
+            placeholder = f'[[URL_{i}]]'
+            placeholders[placeholder] = url
+            text = text.replace(url, placeholder)
+
+        # Skip translation if text is empty after URL removal
+        modified_text = text.strip()
+        if not modified_text:
+            return text
+
+        # Handle source language detection
+        try:
+            detected = translator.detect(modified_text)
+            # Don't translate if text is already in target language
+            if detected.lang == dest_language:
+                return text
+        except Exception as e:
+            logger.warning(f"Language detection failed: {e}")
+
+        # Translate the text
+        translated = translator.translate(modified_text, dest=dest_language).text
+
+        # Restore URLs
+        for placeholder, url in placeholders.items():
+            translated = translated.replace(placeholder, url)
+
         return translated
+
     except Exception as e:
-        logger.error(f"Error translating text: {e}")
+        logger.error(f"Translation error: {e}")
         return text  # Return original text if translation fails
 
 def needs_rating(response_text):
@@ -127,7 +154,7 @@ def get_chat_session(sender_number):
             session_dict = json.loads(session_data.decode('utf-8'))
             session = ChatSession.from_dict(session_dict)
             last_activity = datetime.fromisoformat(session_dict["last_activity"])
-            if datetime.now() - last_activity > timedelta(minutes=2):
+            if datetime.now() - last_activity > timedelta(hours=2):
                 session = ChatSession(sender_number)
         else:
             session = ChatSession(sender_number)
