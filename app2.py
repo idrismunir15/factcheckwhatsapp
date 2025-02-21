@@ -283,6 +283,125 @@ def transcribe_voice_message(audio_url,chat_session):
         logger.error(f"Error transcribing voice message: {e}")
         return None
 
+@celery.task
+def process_whatsapp_message(sender_number, profile_name, incoming_message, chat_session_dict):
+    try:
+        chat_session = ChatSession.from_dict(chat_session_dict)
+
+        # Previous Language
+        previous = chat_session.language
+
+        # Detect language from the incoming message
+        detected_language = translator.detect(incoming_message).lang
+        chat_session.language = detected_language
+
+        # Handle feedback (thumbs up/down)
+        if incoming_message in ["👍", "👎"]:
+            is_feedback, message_sid = handle_button_response(incoming_message, chat_session, previous, sender_number)
+            if is_feedback:
+                return
+
+        if chat_session.is_new_session:
+            welcome_message = send_message_with_template(
+                sender_number,
+                create_welcome_message(profile_name, chat_session.language),
+                incoming_message,
+                is_greeting=True,
+                language=chat_session.language
+            )
+            chat_session.conversation_history.append({
+                "timestamp": datetime.now().isoformat(),
+                "message": create_welcome_message(profile_name, chat_session.language),
+                "type": "outgoing",
+                "message_id": welcome_message.sid
+            })
+
+        chat_session.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "message": incoming_message,
+            "type": "incoming"
+        })
+
+        # Send a processing message for text inputs
+        if needs_rating(incoming_message):
+            processing_message = client.messages.create(
+                from_=TWILIO_WHATSAPP_NUMBER,
+                to=sender_number,
+                body=translate_text("Processing your request. ⏳", chat_session.language)
+            )
+
+        api_response = call_external_api(incoming_message, chat_session)
+        response_text = api_response.get("message", "I am unable to provide a response now. Please try your query again.")
+
+        print(response_text)
+
+        message = send_message_with_template(sender_number, response_text, incoming_message, language=chat_session.language)
+        chat_session.last_message_id = message.sid
+
+        chat_session.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "message": response_text,
+            "type": "outgoing",
+            "message_id": message.sid
+        })
+
+        chat_session.last_activity = datetime.now()
+        save_chat_session(chat_session)
+    except Exception as e:
+        logger.error(f"Error in process_whatsapp_message: {str(e)}")
+
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_reply():
+    try:
+        print(request.form)
+        sender_number = request.form.get("From")
+        chat_session = get_chat_session(sender_number)
+
+        # Get the user's WhatsApp profile name
+        profile_name = request.form.get("ProfileName", "User")
+
+        # Check if the message is a voice note
+        num_media = int(request.form.get("NumMedia", 0))
+        if num_media > 0:
+            media_url = request.form.get("MediaUrl0")
+            media_type = request.form.get("MediaContentType0", "")
+
+            # Check if the media is a voice note (audio/ogg)
+            if media_type == "audio/ogg":
+                # Send a processing message
+                processing_message = client.messages.create(
+                    from_=TWILIO_WHATSAPP_NUMBER,
+                    to=sender_number,
+                    body=translate_text("Processing your voice note... ⏳", chat_session.language)
+                )
+
+                # Transcribed Text
+                transcribed_text = transcribe_voice_message(media_url, chat_session)
+                if transcribed_text:
+                    incoming_message = transcribed_text
+                else:
+                    incoming_message = translate_text("Sorry, I couldn't process the voice note.", chat_session.language)
+            else:
+                incoming_message = translate_text("Unsupported media type. Please send a voice note.", chat_session.language)
+        else:
+            incoming_message = request.form.get("Body", "").strip()
+
+        # Queue the task for asynchronous processing
+        process_whatsapp_message.delay(sender_number, profile_name, incoming_message, chat_session.to_dict())
+
+        return jsonify({"status": "success", "message": "Processing your request."}), 200
+    except Exception as e:
+        logger.error(f"Error in whatsapp_reply: {str(e)}")
+        error_message = translate_text("An error occurred. Please try again later.", chat_session.language)
+        client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=sender_number,
+            body=error_message
+        )
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
+"""
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
@@ -391,6 +510,6 @@ def whatsapp_reply():
             body=error_message
         )
         return jsonify({"status": "error", "message": str(e)}), 500
-
+"""
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
