@@ -81,55 +81,31 @@ def translate_text(text, dest_language):
         return text
         
     try:
-        if not text or not isinstance(text, str):
-            return text
-
-        # More comprehensive URL pattern
-        url_pattern = re.compile(
-            r'(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|'
-            r'www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|'
-            r'https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|'
-            r'www\.[a-zA-Z0-9]+\.[^\s]{2,})'
-        )
-
-        # Store URLs and their unique placeholders
-        urls = url_pattern.findall(text)
-        placeholders = {}
+        # Regular expression to find URLs in the text
+        url_pattern = re.compile(r'(https?://\S+)')
+        urls = re.findall(url_pattern, text)
         
-        # Create unique placeholders for each URL
+        # Unique placeholder format
+        placeholder_format = '__URL_PLACEHOLDER_{}__'
+        
+        # Replace URLs with placeholders
         for i, url in enumerate(urls):
-            placeholder = f'[[URL_{i}]]'
-            placeholders[placeholder] = url
+            placeholder = placeholder_format.format(i)
             text = text.replace(url, placeholder)
-
-        print("Placeholders are:", placeholders)
-        print("Text are:", text)
-        # Skip translation if text is empty after URL removal
-        modified_text = text.strip()
-        if not modified_text:
-            return text
-
-        # Handle source language detection
-        try:
-            detected = translator.detect(modified_text)
-            # Don't translate if text is already in target language
-            if detected.lang == dest_language:
-                return text
-        except Exception as e:
-            logger.warning(f"Language detection failed: {e}")
-
-        # Translate the text
-        translated = translator.translate(modified_text, dest=dest_language).text
-
-        # Restore URLs
-        for placeholder, url in placeholders.items():
+        
+        # Translate the text without URLs
+        translated = translator.translate(text, dest=dest_language).text
+        
+        # Replace placeholders with original URLs
+        for i, url in enumerate(urls):
+            placeholder = placeholder_format.format(i)
             translated = translated.replace(placeholder, url)
-
+        
         return translated
-
     except Exception as e:
-        logger.error(f"Translation error: {e}")
+        logger.error(f"Error translating text: {e}")
         return text  # Return original text if translation fails
+
 
 def needs_rating(response_text):
     # Responses that don't need rating
