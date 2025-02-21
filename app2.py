@@ -77,6 +77,9 @@ class ChatSession:
 
 
 def translate_text(text, dest_language):
+    if dest_language="en":
+        return text
+        
     try:
         if not text or not isinstance(text, str):
             return text
