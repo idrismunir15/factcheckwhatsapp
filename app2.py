@@ -74,26 +74,21 @@ class ChatSession:
         session.language = data.get("language", "en")
         return session
 
-def get_whatsapp_profile_name(sender_number):
+def get_whatsapp_profile_name(request):
     try:
-        # Remove the 'whatsapp:' prefix if present
-        clean_number = sender_number.replace('whatsapp:', '')
+        # Get the ProfileName field from the webhook request
+        profile_name = request.form.get("ProfileName")
+        print("Profile name is {profile_name}")
+        if profile_name:
+            return profile_name
         
-        # Fetch user's profile information using Twilio API
-        profile = client.messaging \
-            .services(os.getenv("TWILIO_SERVICE_SID")) \
-            .users(clean_number) \
-            .fetch()
-            
-        # Return the profile name if available
-        if profile and profile.profile_info:
-            return profile.profile_info.get('name')
-        return None
-    
+        # Fallback to the sender's number if no profile name
+        sender_number = request.form.get("From", "").replace('whatsapp:', '')
+        return f"User ({sender_number[-4:]})"
+        
     except Exception as e:
-        logger.error(f"Error fetching WhatsApp profile name: {e}")
-        return None
-
+        logger.error(f"Error getting WhatsApp profile name: {e}")
+        return "User"
 
 
 def translate_text(text, dest_language):
@@ -289,8 +284,8 @@ def whatsapp_reply():
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        #profile_name = get_whatsapp_profile_name(sender_number)
-        #print(f"Profile Name is {profile_name}")
+        profile_name = get_whatsapp_profile_name(request)
+        
         
         # Check if the message is a voice note
         num_media = int(request.form.get("NumMedia", 0))
