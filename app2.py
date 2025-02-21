@@ -55,7 +55,7 @@ def make_celery(app):
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
-celery=make_celery(app)
+#celery=make_celery(app)
 
 class ChatSession:
     def __init__(self, sender_number):
@@ -294,7 +294,7 @@ def transcribe_voice_message(audio_url,chat_session):
         logger.error(f"Error transcribing voice message: {e}")
         return None
 
-@celery.task
+#@celery.task
 def process_whatsapp_message(sender_number, profile_name, incoming_message, chat_session_dict):
     try:
         chat_session = ChatSession.from_dict(chat_session_dict)
@@ -361,7 +361,7 @@ def process_whatsapp_message(sender_number, profile_name, incoming_message, chat
     except Exception as e:
         logger.error(f"Error in process_whatsapp_message: {str(e)}")
 
-
+"""
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
@@ -410,9 +410,9 @@ def whatsapp_reply():
             to=sender_number,
             body=error_message
         )
-        return jsonify({"status": "error", "message": str(e)}), 500
-        
+        return jsonify({"status": "error", "message": str(e)}), 500    
 """
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
@@ -521,6 +521,6 @@ def whatsapp_reply():
             body=error_message
         )
         return jsonify({"status": "error", "message": str(e)}), 500
-"""
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
