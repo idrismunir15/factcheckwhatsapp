@@ -102,6 +102,8 @@ def translate_text(text, dest_language):
             placeholders[placeholder] = url
             text = text.replace(url, placeholder)
 
+        print("Placeholders are:", placeholders)
+        print("Text are:", text)
         # Skip translation if text is empty after URL removal
         modified_text = text.strip()
         if not modified_text:
