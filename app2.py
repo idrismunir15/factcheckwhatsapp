@@ -268,7 +268,7 @@ def whatsapp_reply():
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        profile_name = request.for.get("ProfileName","User")
+        profile_name = request.form.get("ProfileName","User")
         
         
         # Check if the message is a voice note
