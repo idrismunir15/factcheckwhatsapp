@@ -87,6 +87,7 @@ def translate_text(text, dest_language):
             text = text.replace(url, f'__URL{i}__')
         
         # Translate the text without URLs
+        print(text)
         translated = translator.translate(text, dest=dest_language).text
         
         # Replace placeholders with original URLs
