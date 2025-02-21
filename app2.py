@@ -55,6 +55,8 @@ def make_celery(app):
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
 
+celery=make_celery(app)
+
 class ChatSession:
     def __init__(self, sender_number):
         self.sender_number = sender_number
