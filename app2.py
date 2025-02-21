@@ -74,20 +74,16 @@ class ChatSession:
         session.language = data.get("language", "en")
         return session
 
-def get_whatsapp_profile_name(request):
+def get_whatsapp_profile_name(sender_number):
     try:
-        # Get the ProfileName field from the webhook request
-        profile_name = request.form.get("ProfileName")
-        print("Profile name is {profile_name}")
-        if profile_name:
-            return profile_name
+        # Fetch the user's WhatsApp profile
+        profile = client.messaging.sessions(session_sid).participant_sessions(sender_number).fetch()
+        print(profile)
         
-        # Fallback to the sender's number if no profile name
-        sender_number = request.form.get("From", "").replace('whatsapp:', '')
-        return f"User ({sender_number[-4:]})"
-        
+        # Return the profile name
+        return profile.friendly_name
     except Exception as e:
-        logger.error(f"Error getting WhatsApp profile name: {e}")
+        logger.error(f"Error fetching WhatsApp profile name: {e}")
         return "User"
 
 
@@ -280,11 +276,12 @@ def transcribe_voice_message(audio_url,chat_session):
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     try:
+        print(request.form)
         sender_number = request.form.get("From")
         chat_session = get_chat_session(sender_number)
 
         # Get the user's WhatsApp profile name
-        profile_name = get_whatsapp_profile_name(request)
+        profile_name = get_whatsapp_profile_name(sender_number)
         
         
         # Check if the message is a voice note
