@@ -14,7 +14,8 @@ import time
 from googletrans import Translator
 from pydub import AudioSegment  # For processing audio files
 #import speech_recognition as sr  # For transcribing voice messages
-from openai import OpenAI  # For using OpenAI's API
+#from openai import OpenAI  # For using OpenAI's API
+import openai
 
 import re
 from celery import Celery
@@ -39,8 +40,8 @@ TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
-#openai.api_key = os.getenv("OPENAI_API_KEY")
-client_ = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
+#client_ = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 translator = Translator()
@@ -278,7 +279,8 @@ def transcribe_voice_message(audio_url,chat_session):
         # Step 3: Transcribe the audio using Whisper API
         with open("temp_audio.wav", "rb") as audio_file:
             
-            transcription = client_.audio.transcriptions.create(model="gpt-4o-transcribe", file=audio_file)
+            #transcription = client_.audio.transcriptions.create(model="gpt-4o-transcribe", file=audio_file)
+            transcription = openai.Audio.transcribe(model="whisper-1",file=audio_file,response_format="text")
         
         print(transcription)
 
