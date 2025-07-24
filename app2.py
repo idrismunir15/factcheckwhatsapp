@@ -275,11 +275,8 @@ def transcribe_voice_message(audio_url,chat_session):
 
         # Step 3: Transcribe the audio using Whisper API
         with open("temp_audio.wav", "rb") as audio_file:
-            transcription = openai.Audio.transcribe(
-                file=audio_file,
-                model="whisper-1",
-                response_format="text"
-            )
+            transcription = client.audio.transcriptions.create(model="gpt-4o-transcribe", file=audio_file)
+        
         print(transcription)
 
         detected_language = translator.detect(transcription).lang
